@@ -34,13 +34,16 @@ dependencies = [
 mem0 = ["mem0ai>=0.1.0"]
 zep = ["zep-cloud>=2.0"]
 letta = ["letta-client>=0.1.0"]
+langgraph = ["langgraph>=0.2.0"]
+crewai = ["crewai>=0.80.0"]
 embeddings = ["sentence-transformers>=3.0"]
 nli = ["transformers>=4.40", "torch>=2.0"]
 llm-judge-anthropic = ["anthropic>=0.30"]
 llm-judge-openai = ["openai>=1.30"]
 llm-judge = ["anthropic>=0.30", "openai>=1.30"]
+benchmark = ["huggingface_hub>=0.20"]
 all = [
-    "memoryeval[mem0,zep,letta,embeddings,nli,llm-judge]",
+    "memoryeval[mem0,zep,letta,langgraph,crewai,embeddings,nli,llm-judge,benchmark]",
 ]
 dev = [
     "pytest>=8.0",
