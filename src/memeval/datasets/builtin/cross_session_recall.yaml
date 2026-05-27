@@ -1,0 +1,80 @@
+name: "Cross-Session Recall"
+description: "Tests whether memories persist and are accessible across different sessions"
+version: "1.0"
+memory_types_tested: [semantic, episodic]
+dimensions_tested: [recall_accuracy, relevance]
+
+setup:
+  # Session 1: Initial conversation
+  - write:
+      key: "s1_name"
+      content: "User introduced themselves as Bob, a freelance designer"
+      memory_type: semantic
+      metadata:
+        session_id: "session_001"
+        tags: ["identity"]
+
+  - write:
+      key: "s1_project"
+      content: "Bob is working on a redesign of the Acme Corp website"
+      memory_type: semantic
+      metadata:
+        session_id: "session_001"
+        tags: ["project"]
+
+  # Session 2: Follow-up conversation
+  - write:
+      key: "s2_deadline"
+      content: "The Acme Corp redesign has a deadline of March 15th"
+      memory_type: semantic
+      metadata:
+        session_id: "session_002"
+        tags: ["project", "deadline"]
+
+  - write:
+      key: "s2_tool"
+      content: "Bob decided to use Figma for the Acme Corp project"
+      memory_type: semantic
+      metadata:
+        session_id: "session_002"
+        tags: ["project", "tool"]
+
+  # Session 3: Another follow-up
+  - write:
+      key: "s3_feedback"
+      content: "Acme Corp client loved the initial wireframes Bob presented"
+      memory_type: episodic
+      metadata:
+        session_id: "session_003"
+        tags: ["project", "feedback"]
+
+steps:
+  # From session 4, recall information from all previous sessions
+  - assert_search:
+      query: "Who is the user and what do they do?"
+      expected_contains: ["Bob"]
+      min_results: 1
+
+  - assert_search:
+      query: "What project is Bob working on?"
+      expected_contains: ["Acme"]
+      min_results: 1
+
+  - assert_search:
+      query: "When is the project deadline?"
+      expected_contains: ["March 15"]
+      min_results: 1
+
+  - assert_search:
+      query: "What tool is being used for the project?"
+      expected_contains: ["Figma"]
+      min_results: 1
+
+  - assert_search:
+      query: "How did the client react to the wireframes?"
+      expected_contains: ["loved"]
+      min_results: 1
+
+thresholds:
+  recall_accuracy: 0.8
+  relevance: 0.6

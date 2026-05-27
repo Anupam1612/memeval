@@ -1,0 +1,76 @@
+name: "Forgetting & Decay"
+description: "Tests selective forgetting — deleted items should be gone, retained items should stay"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [forgetting_quality, recall_accuracy]
+
+setup:
+  - write:
+      key: "keep_1"
+      content: "User's email address is alice@example.com"
+      memory_type: semantic
+      metadata:
+        tags: ["contact", "retain"]
+
+  - write:
+      key: "keep_2"
+      content: "User prefers dark mode in all applications"
+      memory_type: semantic
+      metadata:
+        tags: ["preference", "retain"]
+
+  - write:
+      key: "forget_1"
+      content: "User's temporary password is xK9#mP2$vL"
+      memory_type: semantic
+      metadata:
+        tags: ["sensitive", "temporary"]
+
+  - write:
+      key: "forget_2"
+      content: "User's old phone number was 555-0123"
+      memory_type: semantic
+      metadata:
+        tags: ["contact", "outdated"]
+
+  - write:
+      key: "forget_3"
+      content: "User mentioned feeling stressed about a deadline last Tuesday"
+      memory_type: episodic
+      metadata:
+        tags: ["emotional", "temporary"]
+
+steps:
+  # Delete items that should be forgotten
+  - delete:
+      key: "forget_1"
+
+  - delete:
+      key: "forget_2"
+
+  - delete:
+      key: "forget_3"
+
+  # Verify forgotten items are gone
+  - assert_read:
+      key: "forget_1"
+      expected_not_contains: "password"
+
+  - assert_read:
+      key: "forget_2"
+      expected_not_contains: "555-0123"
+
+  # Verify retained items are still there
+  - assert_search:
+      query: "What is the user's email?"
+      expected_contains: ["alice@example.com"]
+      min_results: 1
+
+  - assert_search:
+      query: "What theme does the user prefer?"
+      expected_contains: ["dark mode"]
+      min_results: 1
+
+thresholds:
+  forgetting_quality: 0.9
+  recall_accuracy: 0.8

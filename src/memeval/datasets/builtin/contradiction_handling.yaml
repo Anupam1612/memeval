@@ -1,0 +1,43 @@
+name: "Contradiction Handling"
+description: "Tests whether the memory system detects and handles contradictory facts"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [consistency, update_propagation]
+
+setup:
+  - write:
+      key: "status_single"
+      content: "User is single and not in a relationship"
+      memory_type: semantic
+
+  - write:
+      key: "city_nyc"
+      content: "User currently lives in New York City"
+      memory_type: semantic
+
+steps:
+  # Introduce contradictory information
+  - write:
+      key: "status_married"
+      content: "User recently got married to their partner"
+      memory_type: semantic
+
+  - write:
+      key: "city_london"
+      content: "User moved to London last month"
+      memory_type: semantic
+
+  # Check that queries return the updated information
+  - assert_search:
+      query: "What is the user's relationship status?"
+      expected_contains: ["married"]
+      min_results: 1
+
+  - assert_search:
+      query: "Where does the user live now?"
+      expected_contains: ["London"]
+      min_results: 1
+
+thresholds:
+  consistency: 0.8
+  update_propagation: 0.8

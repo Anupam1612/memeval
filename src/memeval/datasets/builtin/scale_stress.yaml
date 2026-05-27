@@ -1,0 +1,84 @@
+name: "Scale Stress"
+description: "Tests basic retrieval accuracy with a larger number of stored memories"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [recall_accuracy, latency_cost]
+
+setup:
+  # Plant specific facts among many memories
+  - write:
+      key: "target_1"
+      content: "The quarterly revenue target is 2.5 million dollars"
+      memory_type: semantic
+      metadata:
+        tags: ["business", "target"]
+
+  - write:
+      key: "noise_1"
+      content: "The meeting room on floor 3 is called Everest"
+      memory_type: semantic
+
+  - write:
+      key: "noise_2"
+      content: "Company lunch is served at 12:30pm daily"
+      memory_type: semantic
+
+  - write:
+      key: "noise_3"
+      content: "The wifi password for guests is WelcomeGuest2026"
+      memory_type: semantic
+
+  - write:
+      key: "target_2"
+      content: "User's direct report Sarah is on vacation until June 5th"
+      memory_type: semantic
+      metadata:
+        tags: ["people", "target"]
+
+  - write:
+      key: "noise_4"
+      content: "The office has a new espresso machine on the 2nd floor"
+      memory_type: semantic
+
+  - write:
+      key: "noise_5"
+      content: "Parking lot B is closed for maintenance this week"
+      memory_type: semantic
+
+  - write:
+      key: "noise_6"
+      content: "The annual company retreat is scheduled for September"
+      memory_type: semantic
+
+  - write:
+      key: "target_3"
+      content: "Critical bug in the payment processing module needs to be fixed by Friday"
+      memory_type: semantic
+      metadata:
+        tags: ["engineering", "target"]
+
+  - write:
+      key: "noise_7"
+      content: "The team uses Slack for internal communication"
+      memory_type: semantic
+
+steps:
+  # Find specific facts among noise
+  - assert_search:
+      query: "What is the revenue target?"
+      expected_contains: ["2.5 million"]
+      min_results: 1
+
+  - assert_search:
+      query: "When is Sarah coming back?"
+      expected_contains: ["June 5"]
+      min_results: 1
+
+  - assert_search:
+      query: "What critical bugs need fixing?"
+      expected_contains: ["payment"]
+      min_results: 1
+
+thresholds:
+  recall_accuracy: 0.8
+  latency_cost: 0.7

@@ -1,0 +1,74 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "memeval"
+version = "0.1.0"
+description = "Evaluation framework for agent memory systems"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+keywords = ["ai", "agents", "memory", "evaluation", "benchmark", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Pytest",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+dependencies = [
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+    "click>=8.0",
+    "rich>=13.0",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+mem0 = ["mem0ai>=0.1.0"]
+zep = ["zep-cloud>=2.0"]
+letta = ["letta-client>=0.1.0"]
+embeddings = ["sentence-transformers>=3.0"]
+nli = ["transformers>=4.40", "torch>=2.0"]
+llm-judge-anthropic = ["anthropic>=0.30"]
+llm-judge-openai = ["openai>=1.30"]
+llm-judge = ["anthropic>=0.30", "openai>=1.30"]
+all = [
+    "memeval[mem0,zep,letta,embeddings,nli,llm-judge]",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+memeval = "memeval.cli:app"
+
+[project.entry-points.pytest11]
+memeval = "memeval.plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/memeval"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true

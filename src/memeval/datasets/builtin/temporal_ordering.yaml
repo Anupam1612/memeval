@@ -1,0 +1,59 @@
+name: "Temporal Ordering"
+description: "Tests whether episodic memories maintain correct temporal sequence"
+version: "1.0"
+memory_types_tested: [episodic]
+dimensions_tested: [recall_accuracy, relevance]
+
+setup:
+  - write:
+      key: "event_1"
+      content: "On January 5th, user booked a flight to Tokyo for a business trip"
+      memory_type: episodic
+      metadata:
+        tags: ["travel", "booking"]
+
+  - write:
+      key: "event_2"
+      content: "On January 8th, user cancelled the Tokyo flight due to a schedule conflict"
+      memory_type: episodic
+      metadata:
+        tags: ["travel", "cancellation"]
+
+  - write:
+      key: "event_3"
+      content: "On January 10th, user booked a new flight to Seoul instead"
+      memory_type: episodic
+      metadata:
+        tags: ["travel", "booking"]
+
+  - write:
+      key: "event_4"
+      content: "On January 15th, user checked into the Grand Hyatt hotel in Seoul"
+      memory_type: episodic
+      metadata:
+        tags: ["travel", "hotel"]
+
+steps:
+  - assert_search:
+      query: "What is the user's current travel destination?"
+      expected_contains: ["Seoul"]
+      min_results: 1
+
+  - assert_search:
+      query: "Did the user ever plan to go to Tokyo?"
+      expected_contains: ["Tokyo"]
+      min_results: 1
+
+  - assert_search:
+      query: "Where is the user staying?"
+      expected_contains: ["Grand Hyatt"]
+      min_results: 1
+
+  - assert_search:
+      query: "What happened with the Tokyo trip?"
+      expected_contains: ["cancelled"]
+      min_results: 1
+
+thresholds:
+  recall_accuracy: 0.8
+  relevance: 0.6

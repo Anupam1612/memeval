@@ -1,0 +1,72 @@
+name: "Basic Recall"
+description: "Tests fundamental write-then-search memory retrieval"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [recall_accuracy, relevance, latency_cost]
+
+setup:
+  - write:
+      key: "user_name"
+      content: "The user's name is Alice Johnson"
+      memory_type: semantic
+      metadata:
+        tags: ["identity"]
+
+  - write:
+      key: "user_location"
+      content: "Alice lives in San Francisco, California"
+      memory_type: semantic
+      metadata:
+        tags: ["location"]
+
+  - write:
+      key: "user_job"
+      content: "Alice works as a machine learning engineer at a startup"
+      memory_type: semantic
+      metadata:
+        tags: ["career"]
+
+  - write:
+      key: "user_hobby"
+      content: "Alice enjoys rock climbing and reading science fiction novels"
+      memory_type: semantic
+      metadata:
+        tags: ["hobby"]
+
+  - write:
+      key: "user_pet"
+      content: "Alice has a golden retriever named Max"
+      memory_type: semantic
+      metadata:
+        tags: ["pet"]
+
+steps:
+  - assert_search:
+      query: "What is the user's name?"
+      expected_contains: ["Alice"]
+      min_results: 1
+
+  - assert_search:
+      query: "Where does the user live?"
+      expected_contains: ["San Francisco"]
+      min_results: 1
+
+  - assert_search:
+      query: "What does the user do for work?"
+      expected_contains: ["machine learning"]
+      min_results: 1
+
+  - assert_search:
+      query: "What are the user's hobbies?"
+      expected_contains: ["rock climbing"]
+      min_results: 1
+
+  - assert_search:
+      query: "Does the user have any pets?"
+      expected_contains: ["Max"]
+      min_results: 1
+
+thresholds:
+  recall_accuracy: 0.8
+  relevance: 0.6
+  latency_cost: 0.7

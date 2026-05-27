@@ -1,0 +1,64 @@
+name: "Multi-Hop Recall"
+description: "Tests ability to combine information from multiple stored memories"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [recall_accuracy, relevance]
+
+setup:
+  - write:
+      key: "fact_1"
+      content: "User's manager is named David Chen"
+      memory_type: semantic
+      metadata:
+        tags: ["work", "people"]
+
+  - write:
+      key: "fact_2"
+      content: "David Chen is based in the Seattle office"
+      memory_type: semantic
+      metadata:
+        tags: ["work", "location"]
+
+  - write:
+      key: "fact_3"
+      content: "The Seattle office is in the Pacific timezone"
+      memory_type: semantic
+      metadata:
+        tags: ["work", "location"]
+
+  - write:
+      key: "fact_4"
+      content: "User works on the recommendation engine team"
+      memory_type: semantic
+      metadata:
+        tags: ["work", "team"]
+
+  - write:
+      key: "fact_5"
+      content: "The recommendation engine team has a weekly standup on Tuesdays at 10am Pacific"
+      memory_type: semantic
+      metadata:
+        tags: ["work", "schedule"]
+
+steps:
+  # Direct recall
+  - assert_search:
+      query: "Who is the user's manager?"
+      expected_contains: ["David Chen"]
+      min_results: 1
+
+  # One-hop: manager → location
+  - assert_search:
+      query: "Where is David Chen located?"
+      expected_contains: ["Seattle"]
+      min_results: 1
+
+  # Multi-hop: team → schedule
+  - assert_search:
+      query: "When is the team standup?"
+      expected_contains: ["Tuesday"]
+      min_results: 1
+
+thresholds:
+  recall_accuracy: 0.7
+  relevance: 0.5

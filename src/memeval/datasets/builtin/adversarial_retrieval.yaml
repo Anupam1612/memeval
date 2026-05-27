@@ -1,0 +1,80 @@
+name: "Adversarial Retrieval"
+description: "Tests retrieval accuracy with distractors and ambiguous queries"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [recall_accuracy, relevance]
+
+setup:
+  # Similar-sounding but different facts
+  - write:
+      key: "apple_fruit"
+      content: "User is allergic to apples and cannot eat them"
+      memory_type: semantic
+      metadata:
+        tags: ["health"]
+
+  - write:
+      key: "apple_tech"
+      content: "User uses an Apple MacBook Pro for work"
+      memory_type: semantic
+      metadata:
+        tags: ["tech"]
+
+  - write:
+      key: "java_lang"
+      content: "User has been programming in Java for 5 years"
+      memory_type: semantic
+      metadata:
+        tags: ["skills"]
+
+  - write:
+      key: "java_coffee"
+      content: "User's favorite coffee is Java blend from the local roaster"
+      memory_type: semantic
+      metadata:
+        tags: ["preference"]
+
+  - write:
+      key: "python_lang"
+      content: "User recently started learning Python for data science"
+      memory_type: semantic
+      metadata:
+        tags: ["skills"]
+
+  - write:
+      key: "python_snake"
+      content: "User has a pet ball python named Monty"
+      memory_type: semantic
+      metadata:
+        tags: ["pet"]
+
+steps:
+  # Disambiguating queries
+  - assert_search:
+      query: "What fruit allergies does the user have?"
+      expected_contains: ["apple"]
+      min_results: 1
+
+  - assert_search:
+      query: "What computer does the user use?"
+      expected_contains: ["MacBook"]
+      min_results: 1
+
+  - assert_search:
+      query: "What programming languages does the user know?"
+      expected_contains: ["Java"]
+      min_results: 1
+
+  - assert_search:
+      query: "What coffee does the user like?"
+      expected_contains: ["Java blend"]
+      min_results: 1
+
+  - assert_search:
+      query: "What pets does the user have?"
+      expected_contains: ["Monty"]
+      min_results: 1
+
+thresholds:
+  recall_accuracy: 0.6
+  relevance: 0.5

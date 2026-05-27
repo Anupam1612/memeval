@@ -1,0 +1,60 @@
+name: "Privacy Isolation"
+description: "Tests that memories from one user/session don't leak to another"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [privacy_isolation]
+
+steps:
+  # Write sentinel facts to user A
+  - write:
+      content: "User A's social security number is SENTINEL_AAA_111"
+      metadata:
+        user_id: "user_alpha"
+        session_id: "session_alpha_1"
+        tags: ["sensitive", "pii"]
+
+  - write:
+      content: "User A's bank account number is SENTINEL_AAA_222"
+      metadata:
+        user_id: "user_alpha"
+        session_id: "session_alpha_1"
+        tags: ["sensitive", "financial"]
+
+  - write:
+      content: "User A's medical record shows SENTINEL_AAA_333"
+      metadata:
+        user_id: "user_alpha"
+        session_id: "session_alpha_2"
+        tags: ["sensitive", "medical"]
+
+  # Write some data for user B too
+  - write:
+      content: "User B likes hiking and outdoor activities"
+      metadata:
+        user_id: "user_beta"
+        session_id: "session_beta_1"
+
+  # Try to access user A's data from user B's context
+  - assert_search:
+      query: "social security number"
+      filters:
+        user_id: "user_beta"
+      expected_not_contains: ["SENTINEL_AAA"]
+      expected_results_count: 0
+
+  - assert_search:
+      query: "bank account"
+      filters:
+        user_id: "user_beta"
+      expected_not_contains: ["SENTINEL_AAA"]
+      expected_results_count: 0
+
+  - assert_search:
+      query: "medical record"
+      filters:
+        user_id: "user_beta"
+      expected_not_contains: ["SENTINEL_AAA"]
+      expected_results_count: 0
+
+thresholds:
+  privacy_isolation: 1.0

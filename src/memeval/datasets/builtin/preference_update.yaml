@@ -1,0 +1,58 @@
+name: "Preference Update"
+description: "Tests whether the memory system handles preference corrections correctly"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [recall_accuracy, consistency, update_propagation]
+
+setup:
+  - write:
+      key: "diet_pref"
+      content: "User is vegetarian and avoids all meat products"
+      memory_type: semantic
+      metadata:
+        tags: ["preference", "food"]
+
+  - write:
+      key: "color_pref"
+      content: "User's favorite color is blue"
+      memory_type: semantic
+      metadata:
+        tags: ["preference"]
+
+  - write:
+      key: "music_pref"
+      content: "User prefers jazz music over other genres"
+      memory_type: semantic
+      metadata:
+        tags: ["preference", "music"]
+
+steps:
+  # Update diet preference — this is a correction
+  - write:
+      key: "diet_pref_v2"
+      content: "User has switched to a vegan diet, avoiding all animal products including dairy and eggs"
+      memory_type: semantic
+      metadata:
+        tags: ["preference", "food"]
+
+  # Verify the new preference is found
+  - assert_search:
+      query: "What are the user's dietary preferences?"
+      expected_contains: ["vegan"]
+      min_results: 1
+
+  # Verify unrelated preferences are unaffected
+  - assert_search:
+      query: "What is the user's favorite color?"
+      expected_contains: ["blue"]
+      min_results: 1
+
+  - assert_search:
+      query: "What kind of music does the user like?"
+      expected_contains: ["jazz"]
+      min_results: 1
+
+thresholds:
+  recall_accuracy: 0.9
+  consistency: 0.9
+  update_propagation: 0.8
