@@ -156,7 +156,7 @@ class LettaAdapter(MemoryProtocol):
             # Try Letta archival search
             if self._agent_id:
                 try:
-                    passages = self._client.agents.passages.list(
+                    passages = self._client.agents.passages.list(  # type: ignore[call-arg]
                         agent_id=self._agent_id,
                         query_text=query,
                         limit=limit,

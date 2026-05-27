@@ -119,7 +119,7 @@ class ScenarioItem(pytest.Item):
                 f"score {mr.score:.3f} < threshold {mr.threshold:.3f} — {mr.reason}"
             )
 
-    def repr_failure(self, excinfo: Any) -> str:
+    def repr_failure(self, excinfo: Any) -> str:  # type: ignore[override]
         return f"MEMEVAL SCENARIO FAILED: {self.scenario.name}\n{excinfo.value}"
 
     def reportinfo(self) -> tuple:

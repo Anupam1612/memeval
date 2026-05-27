@@ -39,17 +39,15 @@ class MemoryMetadata:
 
     def with_updates(self, **kwargs: Any) -> MemoryMetadata:
         """Return a new MemoryMetadata with the given fields replaced."""
-        current = {
-            "source": self.source,
-            "user_id": self.user_id,
-            "session_id": self.session_id,
-            "agent_id": self.agent_id,
-            "timestamp": self.timestamp,
-            "tags": self.tags,
-            "extra": self.extra,
-        }
-        current.update(kwargs)
-        return MemoryMetadata(**current)
+        return MemoryMetadata(
+            source=kwargs.get("source", self.source),
+            user_id=kwargs.get("user_id", self.user_id),
+            session_id=kwargs.get("session_id", self.session_id),
+            agent_id=kwargs.get("agent_id", self.agent_id),
+            timestamp=kwargs.get("timestamp", self.timestamp),
+            tags=kwargs.get("tags", self.tags),
+            extra=kwargs.get("extra", self.extra),
+        )
 
 
 @dataclass(frozen=True)

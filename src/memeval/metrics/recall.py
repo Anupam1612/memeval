@@ -51,8 +51,8 @@ def _compute_semantic_scores(
     if not retrieved:
         return {"recall": 0.0, "precision": 0.0, "f1": 0.0, "max_similarities": []}
 
-    exp_emb = model.encode(expected, normalize_embeddings=True)  # type: ignore[union-attr]
-    ret_emb = model.encode(retrieved, normalize_embeddings=True)  # type: ignore[union-attr]
+    exp_emb = model.encode(expected, normalize_embeddings=True)  # type: ignore[attr-defined]
+    ret_emb = model.encode(retrieved, normalize_embeddings=True)  # type: ignore[attr-defined]
 
     # Cosine similarity matrix (already L2-normalized, so dot = cosine)
     sim_matrix = np.dot(exp_emb, ret_emb.T)

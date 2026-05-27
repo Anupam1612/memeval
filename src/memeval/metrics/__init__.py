@@ -19,7 +19,7 @@ ALL_METRICS = [
     PrivacyIsolationMetric,
 ]
 
-METRIC_REGISTRY: dict[str, type[BaseMetric]] = {m.name: m for m in ALL_METRICS}
+METRIC_REGISTRY: dict[str, type[BaseMetric]] = {m.name: m for m in ALL_METRICS}  # type: ignore[attr-defined,misc]
 
 __all__ = [
     "BaseMetric",

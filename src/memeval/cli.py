@@ -101,9 +101,9 @@ async def _run_eval(
         if verbose and not result.passed:
             for f in result.assertion_failures:
                 console.print(f"    [red]Assertion failed at step {f.step_index}[/red]")
-            for f in result.metric_failures:
+            for mf in result.metric_failures:
                 console.print(
-                    f"    [red]{f.metric_name}: {f.score:.3f} < {f.threshold:.3f}[/red]"
+                    f"    [red]{mf.metric_name}: {mf.score:.3f} < {mf.threshold:.3f}[/red]"
                 )
 
     # Print scorecard
