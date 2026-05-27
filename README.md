@@ -187,16 +187,31 @@ memeval is built on the **Standard Memory Protocol (SMP)** — a 7-operation int
 └─────────────────────────────────────────────┘
 ```
 
-## Real findings from our benchmarks
+## Benchmark findings
 
-Testing against real Mem0 (self-hosted, gpt-4o-mini):
+Results from a single-run benchmark on 2026-05-27. Environment: memeval 0.1.1, Python 3.14, macOS ARM64. Mem0 self-hosted with gpt-4o-mini. Not statistically significant -- see [benchmark methodology](docs/benchmark-methodology.md) for how to run reproducible multi-run benchmarks.
 
-- **Recall: 1.000** — LLM fact extraction makes retrieval excellent
-- **Consistency: 0.917** — Mem0 stores both old and new facts, doesn't auto-resolve contradictions
-- **Latency: write p95 = 3,500ms** — every write calls OpenAI for extraction
-- **Update propagation: 1.000** — corrections do propagate through search
+Testing against real Mem0:
 
-These are production-relevant insights no other tool surfaces.
+- **Recall: 1.000** -- LLM fact extraction makes retrieval excellent
+- **Consistency: 0.917** -- Mem0 stores both old and new facts, doesn't auto-resolve contradictions
+- **Latency: write p95 ~3,500ms** -- every write calls OpenAI for extraction; search p95 ~500ms
+- **Update propagation: 1.000** -- corrections do propagate through search
+
+### Reproducing these results
+
+```bash
+pip install memoryeval[mem0]
+export OPENAI_API_KEY=sk-...
+
+# Single run (quick)
+python scripts/run_benchmark.py --adapter in_memory --adapter mem0
+
+# Multi-run for statistical significance
+python scripts/run_benchmark.py --adapter mem0 --runs 3 --output results/
+```
+
+See [docs/benchmark-methodology.md](docs/benchmark-methodology.md) for full details on methodology, conditions, and how to interpret results.
 
 ## Project Structure
 
