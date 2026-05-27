@@ -16,7 +16,6 @@ import json
 import statistics
 from typing import Any
 
-
 JUDGE_PROMPT = """You are evaluating whether a retrieved memory matches an expected fact.
 
 Expected fact: {expected}

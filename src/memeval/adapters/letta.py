@@ -104,7 +104,6 @@ class LettaAdapter(MemoryProtocol):
         async with self._track("write") as record:
             assigned_key = key or f"letta_{uuid.uuid4().hex[:12]}"
 
-            api_success = False
             if self._agent_id:
                 try:
                     self._client.agents.messages.create(
@@ -114,7 +113,6 @@ class LettaAdapter(MemoryProtocol):
                             "content": f"Please remember this fact: {content}",
                         }],
                     )
-                    api_success = True
                 except Exception:
                     pass
 

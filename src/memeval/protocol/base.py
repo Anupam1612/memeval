@@ -18,8 +18,8 @@ from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 from memeval.protocol.types import (
     MemoryEntry,
@@ -44,7 +44,8 @@ class MemoryProtocol(ABC):
     @asynccontextmanager
     async def _track(self, op_name: str) -> AsyncIterator[dict]:
         """Context manager that tracks operation latency and logs it."""
-        record: dict = {"operation": op_name, "start_ms": time.perf_counter() * 1000, "latency_ms": 0.0}
+        start_ms = time.perf_counter() * 1000
+        record: dict = {"operation": op_name, "start_ms": start_ms, "latency_ms": 0.0}
         await self.on_operation_start(op_name)
         try:
             yield record

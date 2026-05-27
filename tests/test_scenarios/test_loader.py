@@ -1,9 +1,9 @@
 """Tests for scenario loading."""
 
-import pytest
-from pathlib import Path
 
-from memeval.scenarios.loader import load_scenario, load_builtin_scenarios
+import pytest
+
+from memeval.scenarios.loader import load_builtin_scenarios, load_scenario
 
 
 def test_load_builtin_scenarios():

@@ -200,7 +200,10 @@ class ScenarioRunner:
             data={
                 "query": params["query"],
                 "results": [
-                    {"content": r.entry.content, "key": r.entry.key, "score": r.score, "rank": r.rank}
+                    {
+                        "content": r.entry.content, "key": r.entry.key,
+                        "score": r.score, "rank": r.rank,
+                    }
                     for r in results
                 ],
                 "count": len(results),
@@ -339,7 +342,10 @@ class ScenarioRunner:
             data={
                 "query": params["query"],
                 "results": [
-                    {"content": r.entry.content, "key": r.entry.key, "score": r.score, "rank": r.rank}
+                    {
+                        "content": r.entry.content, "key": r.entry.key,
+                        "score": r.score, "rank": r.rank,
+                    }
                     for r in results
                 ],
                 "count": len(results),

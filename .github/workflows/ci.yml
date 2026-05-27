@@ -47,7 +47,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install memeval
-        run: pip install -e .
+        run: pip install -e ".[dev]"
 
       - name: Run built-in scenarios against InMemoryAdapter
         run: memeval run --adapter in_memory --output memeval-report.json --verbose

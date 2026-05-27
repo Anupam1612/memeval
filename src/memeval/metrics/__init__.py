@@ -1,12 +1,12 @@
 from memeval.metrics.base import BaseMetric, MetricCategory, MetricResult
-from memeval.metrics.recall import RecallAccuracyMetric
-from memeval.metrics.relevance import RelevanceMetric
 from memeval.metrics.consistency import ConsistencyMetric
 from memeval.metrics.forgetting import ForgettingQualityMetric
-from memeval.metrics.update import UpdatePropagationMetric
 from memeval.metrics.latency import LatencyCostMetric
-from memeval.metrics.scalability import ScalabilityMetric
 from memeval.metrics.privacy import PrivacyIsolationMetric
+from memeval.metrics.recall import RecallAccuracyMetric
+from memeval.metrics.relevance import RelevanceMetric
+from memeval.metrics.scalability import ScalabilityMetric
+from memeval.metrics.update import UpdatePropagationMetric
 
 ALL_METRICS = [
     RecallAccuracyMetric,

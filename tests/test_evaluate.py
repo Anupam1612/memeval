@@ -2,7 +2,7 @@
 
 import pytest
 
-from memeval import evaluate, InMemoryAdapter
+from memeval import InMemoryAdapter, evaluate
 from memeval.metrics import RecallAccuracyMetric
 
 

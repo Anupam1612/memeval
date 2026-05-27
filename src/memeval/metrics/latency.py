@@ -124,8 +124,6 @@ class LatencyCostMetric(BaseMetric):
         else:
             score = 1.0
 
-        p95 = overall_stats["p95"]
-
         elapsed = (time.perf_counter() - start) * 1000
 
         return self._result(

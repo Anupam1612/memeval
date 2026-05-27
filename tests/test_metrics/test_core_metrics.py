@@ -3,7 +3,7 @@
 import pytest
 
 from memeval.adapters.in_memory import InMemoryAdapter
-from memeval.metrics import RecallAccuracyMetric, RelevanceMetric, ConsistencyMetric
+from memeval.metrics import ConsistencyMetric, RecallAccuracyMetric, RelevanceMetric
 from memeval.scenarios.loader import load_builtin_scenarios
 from memeval.scenarios.runner import ScenarioRunner
 
@@ -70,7 +70,7 @@ async def test_consistency_with_contradictions(adapter):
     metric = ConsistencyMetric(threshold=0.9, mode="heuristic")
 
     # Create a minimal scenario result
-    from memeval.scenarios.types import ScenarioResult, Scenario
+    from memeval.scenarios.types import Scenario, ScenarioResult
     scenario = Scenario(
         name="test", description="", version="1.0",
         memory_types_tested=[], dimensions_tested=[],

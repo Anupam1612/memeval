@@ -17,6 +17,8 @@ from __future__ import annotations
 __version__ = "0.1.0"
 
 from memeval.adapters.in_memory import InMemoryAdapter
+from memeval.metrics import METRIC_REGISTRY
+from memeval.metrics.base import BaseMetric, MetricResult
 from memeval.protocol.base import MemoryProtocol
 from memeval.protocol.types import (
     MemoryEntry,
@@ -29,9 +31,6 @@ from memeval.protocol.types import (
 from memeval.scenarios.loader import load_builtin_scenarios, load_scenario, load_scenarios_from_dir
 from memeval.scenarios.runner import ScenarioRunner
 from memeval.scenarios.types import Scenario, ScenarioResult
-
-from memeval.metrics import METRIC_REGISTRY
-from memeval.metrics.base import BaseMetric, MetricResult
 
 
 async def evaluate(

@@ -6,7 +6,6 @@ or sentence-transformers embeddings if installed.
 
 from __future__ import annotations
 
-import time
 import uuid
 from datetime import datetime
 

@@ -23,7 +23,7 @@ try:
 except ImportError:
     pass
 
-from memeval.reporting.console import print_scorecard, print_comparative
+from memeval.reporting.console import print_comparative, print_scorecard
 
 
 @click.group()
@@ -55,13 +55,12 @@ def run(adapter: str, scenarios: str, output: str | None, verbose: bool) -> None
 async def _run_eval(
     adapter_name: str, scenarios_path: str, output: str | None, verbose: bool
 ) -> None:
-    from memeval.adapters.in_memory import InMemoryAdapter
+    from rich.console import Console
+
     from memeval.metrics import METRIC_REGISTRY
     from memeval.reporting.json_report import generate_report
     from memeval.scenarios.loader import load_builtin_scenarios, load_scenarios_from_dir
     from memeval.scenarios.runner import ScenarioRunner
-
-    from rich.console import Console
 
     console = Console()
 
@@ -139,12 +138,12 @@ def benchmark(adapters: tuple[str, ...], scenarios: str, output: str) -> None:
 async def _run_benchmark(
     adapter_names: tuple[str, ...], scenarios_path: str, output: str
 ) -> None:
+    from rich.console import Console
+
     from memeval.metrics import METRIC_REGISTRY
     from memeval.reporting.json_report import generate_report
     from memeval.scenarios.loader import load_builtin_scenarios, load_scenarios_from_dir
     from memeval.scenarios.runner import ScenarioRunner
-
-    from rich.console import Console
 
     console = Console()
 
@@ -154,7 +153,9 @@ async def _run_benchmark(
     else:
         scenario_list = load_scenarios_from_dir(scenarios_path)
 
-    console.print(f"[bold]Benchmark:[/bold] {len(scenario_list)} scenarios × {len(adapter_names)} adapters\n")
+    n_scenarios = len(scenario_list)
+    n_adapters = len(adapter_names)
+    console.print(f"[bold]Benchmark:[/bold] {n_scenarios} scenarios x {n_adapters} adapters\n")
 
     all_adapter_results: dict[str, list] = {}
 
