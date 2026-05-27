@@ -1,0 +1,115 @@
+# memeval CI template
+# Copy this file to your repo at .github/workflows/memeval.yml
+#
+# Required secrets (set in repo Settings > Secrets):
+#   OPENAI_API_KEY  - Required for Mem0 self-hosted adapter
+#   MEM0_API_KEY    - Required for Mem0 hosted adapter
+#   ZEP_API_KEY     - Required for Zep adapter
+#   LETTA_API_KEY   - Required for Letta adapter
+#
+# Usage:
+#   1. Copy this file to .github/workflows/memeval.yml
+#   2. Set the adapter and secrets for your memory provider
+#   3. Optionally add custom scenarios in a memeval_scenarios/ directory
+
+name: Memory Evaluation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  memeval:
+    name: Evaluate Memory
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install memeval
+        run: |
+          pip install memeval
+          # Uncomment the adapter you use:
+          # pip install memeval[mem0]
+          # pip install memeval[zep]
+          # pip install memeval[letta]
+
+      - name: Run memory evaluation
+        run: memeval run --adapter in_memory --output memeval-report.json
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # MEM0_API_KEY: ${{ secrets.MEM0_API_KEY }}
+          # ZEP_API_KEY: ${{ secrets.ZEP_API_KEY }}
+          # LETTA_API_KEY: ${{ secrets.LETTA_API_KEY }}
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: memeval-report
+          path: memeval-report.json
+
+      - name: Post PR comment
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('memeval-report.json')) return;
+            const report = JSON.parse(fs.readFileSync('memeval-report.json', 'utf8'));
+            const s = report.summary;
+            const status = s.overall_passed ? 'PASSED' : 'FAILED';
+
+            const dims = Object.entries(report.dimensions)
+              .map(([name, d]) => `| ${name} | ${d.score.toFixed(3)} | ${d.threshold} | ${d.passed ? 'PASS' : 'FAIL'} |`)
+              .join('\n');
+
+            const scenarios = report.scenarios.map(sc => {
+              const metrics = Object.entries(sc.metrics)
+                .map(([m, v]) => `  - ${m}: ${v.score.toFixed(3)}${v.passed ? '' : ' -- below ' + v.threshold}`)
+                .join('\n');
+              return `- [${sc.passed ? 'PASS' : 'FAIL'}] **${sc.name}**\n${metrics}`;
+            }).join('\n');
+
+            const body = [
+              `## memeval: ${status}`,
+              '',
+              `**Adapter:** \`in_memory\` | **Score:** ${s.overall_score.toFixed(3)} | **Scenarios:** ${s.scenarios_passed}/${s.scenarios_run} passed`,
+              '',
+              '| Dimension | Score | Threshold | Status |',
+              '|-----------|-------|-----------|--------|',
+              dims,
+              '',
+              '<details>',
+              '<summary>Scenario details</summary>',
+              '',
+              scenarios,
+              '',
+              '</details>',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes('memeval:'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.issue.number, body,
+              });
+            }
