@@ -1,0 +1,66 @@
+name: "Session: Customer Support Multi-Turn"
+description: "Simulates a real customer support conversation testing progressive context building"
+version: "1.0"
+memory_types_tested: [episodic, semantic]
+dimensions_tested: [recall_accuracy, relevance]
+
+steps:
+  - create_session:
+      session_id: "support_ticket_789"
+      user_id: "customer_frank"
+
+  # Turn 1: Customer reports issue
+  - add_message:
+      session_id: "support_ticket_789"
+      role: "user"
+      content: "Hi, I am having trouble with my subscription. I was charged $99 but my plan is the Basic plan at $29 per month."
+
+  # Turn 2: Agent asks for details
+  - add_message:
+      session_id: "support_ticket_789"
+      role: "assistant"
+      content: "I am sorry to hear about the billing issue. Can you provide your account email?"
+
+  # Turn 3: Customer provides email
+  - add_message:
+      session_id: "support_ticket_789"
+      role: "user"
+      content: "My account email is frank.miller@email.com and my account ID is ACC-44521"
+
+  # Turn 4: Agent investigates
+  - add_message:
+      session_id: "support_ticket_789"
+      role: "assistant"
+      content: "Thank you Frank. I can see the overcharge. It looks like you were accidentally upgraded to the Pro plan on May 15th."
+
+  # Turn 5: Customer wants resolution
+  - add_message:
+      session_id: "support_ticket_789"
+      role: "user"
+      content: "I did not authorize any upgrade. Please refund the difference and keep me on Basic."
+
+  # Verify the full context is maintained
+  - assert_context:
+      session_id: "support_ticket_789"
+      query: "What is the billing issue?"
+      expected_contains: ["99"]
+      min_facts: 1
+
+  - assert_context:
+      session_id: "support_ticket_789"
+      query: "What is the customer's account?"
+      expected_contains: ["frank"]
+
+  - assert_context:
+      session_id: "support_ticket_789"
+      query: "What plan should the customer be on?"
+      expected_contains: ["Basic"]
+
+  - assert_context:
+      session_id: "support_ticket_789"
+      query: "What does the customer want?"
+      expected_contains: ["refund"]
+
+thresholds:
+  recall_accuracy: 0.7
+  relevance: 0.5

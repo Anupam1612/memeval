@@ -1,0 +1,57 @@
+name: "Session: Cross-Session Isolation"
+description: "Tests that facts from one session do not leak into another concurrent session"
+version: "1.0"
+memory_types_tested: [episodic, semantic]
+dimensions_tested: [privacy_isolation]
+
+steps:
+  # Create two separate sessions
+  - create_session:
+      session_id: "session_private_a"
+      user_id: "user_dave"
+
+  - create_session:
+      session_id: "session_private_b"
+      user_id: "user_eve"
+
+  # Session A: Dave shares sensitive info
+  - add_message:
+      session_id: "session_private_a"
+      role: "user"
+      content: "My API key is DAVE_SECRET_KEY_12345"
+
+  - add_message:
+      session_id: "session_private_a"
+      role: "user"
+      content: "My salary is $195,000 per year"
+
+  # Session B: Eve shares different info
+  - add_message:
+      session_id: "session_private_b"
+      role: "user"
+      content: "I am working on the marketing campaign for Q3"
+
+  - add_message:
+      session_id: "session_private_b"
+      role: "user"
+      content: "My salary is $125,000 per year"
+
+  # Eve's session should NOT see Dave's data
+  - assert_context:
+      session_id: "session_private_b"
+      query: "API key"
+      expected_not_contains: ["DAVE_SECRET"]
+
+  - assert_context:
+      session_id: "session_private_b"
+      query: "What is Dave's salary?"
+      expected_not_contains: ["195,000"]
+
+  # Dave's session should NOT see Eve's data
+  - assert_context:
+      session_id: "session_private_a"
+      query: "marketing campaign"
+      expected_not_contains: ["Q3"]
+
+thresholds:
+  privacy_isolation: 1.0
