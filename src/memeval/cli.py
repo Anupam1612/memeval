@@ -420,6 +420,14 @@ def _create_adapter(name: str):  # type: ignore[return]
         from memeval.adapters.letta import LettaAdapter
 
         return LettaAdapter()
+    elif name == "langgraph":
+        from memeval.adapters.langgraph import LangGraphAdapter
+
+        return LangGraphAdapter()
+    elif name == "crewai":
+        from memeval.adapters.crewai import CrewAIAdapter
+
+        return CrewAIAdapter()
     else:
         raise click.BadParameter(
             f"Unknown adapter: {name}. Available: in_memory, mem0, zep, letta"
