@@ -16,8 +16,10 @@ from memeval.protocol.types import (
     MemoryEntry,
     MemoryMetadata,
     MemoryType,
+    Message,
     SearchFilters,
     SearchResult,
+    SessionContext,
     WriteResult,
 )
 
@@ -42,6 +44,7 @@ class InMemoryAdapter(MemoryProtocol):
     ) -> None:
         super().__init__()
         self._store: dict[str, MemoryEntry] = {}
+        self._sessions: dict[str, dict] = {}
         self._search_mode = search_mode
         self._embedder = None
         self._embeddings: dict[str, np.ndarray] = {}
@@ -269,7 +272,63 @@ class InMemoryAdapter(MemoryProtocol):
 
         return result
 
+    # ── Session Operations ──────────────────────────────────────
+
+    async def create_session(
+        self, *, session_id: str | None = None, user_id: str | None = None
+    ) -> str:
+        sid = session_id or f"session_{uuid.uuid4().hex[:12]}"
+        self._sessions[sid] = {"user_id": user_id, "messages": []}
+        return sid
+
+    async def add_message(self, session_id: str, message: Message) -> WriteResult:
+
+        async with self._track("add_message"):
+            if session_id not in self._sessions:
+                self._sessions[session_id] = {"user_id": None, "messages": []}
+
+            self._sessions[session_id]["messages"].append({
+                "role": message.role,
+                "content": message.content,
+            })
+
+            # Also store as a regular memory for search
+            result = await self.write(
+                content=message.content,
+                metadata=MemoryMetadata(session_id=session_id),
+                memory_type=MemoryType.EPISODIC,
+            )
+
+        return result
+
+    async def get_session_context(
+        self, session_id: str, query: str | None = None
+    ) -> SessionContext:
+        async with self._track("get_session_context"):
+            session = self._sessions.get(session_id, {"messages": []})
+            messages = session["messages"]
+
+            # Extract facts from the session's messages
+            facts = [m["content"] for m in messages]
+
+            # If there's a query, also search for relevant memories
+            if query:
+                results = await self.search(
+                    query, limit=10,
+                    filters=SearchFilters(session_id=session_id),
+                )
+                for r in results:
+                    if r.entry.content not in facts:
+                        facts.append(r.entry.content)
+
+            return SessionContext(
+                session_id=session_id,
+                facts=facts,
+                summary=f"{len(messages)} messages in session",
+            )
+
     async def reset(self) -> None:
         self._store.clear()
         self._embeddings.clear()
+        self._sessions.clear()
         self.clear_operation_log()

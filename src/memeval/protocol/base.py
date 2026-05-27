@@ -25,8 +25,10 @@ from memeval.protocol.types import (
     MemoryEntry,
     MemoryMetadata,
     MemoryType,
+    Message,
     SearchFilters,
     SearchResult,
+    SessionContext,
     WriteResult,
 )
 
@@ -180,6 +182,77 @@ class MemoryProtocol(ABC):
             Original memories are deleted.
         """
         ...
+
+    # ── Session Operations (optional) ─────────────────────────
+    #
+    # These model multi-turn conversations. Providers map them to
+    # their native session/thread concept:
+    #   Mem0:  run_id
+    #   Zep:   thread
+    #   Letta: agent message sequence
+    #
+    # Default implementations fall back to write/search, so adapters
+    # that don't support native sessions still work.
+
+    async def create_session(
+        self,
+        *,
+        session_id: str | None = None,
+        user_id: str | None = None,
+    ) -> str:
+        """Create a new conversation session. Returns the session ID.
+
+        Override to use the provider's native session/thread/run concept.
+        Default: generates a session ID without provider-side state.
+        """
+        import uuid
+
+        return session_id or f"session_{uuid.uuid4().hex[:12]}"
+
+    async def add_message(
+        self,
+        session_id: str,
+        message: Message,
+    ) -> WriteResult:
+        """Add a message to an existing session.
+
+        This is the core multi-turn operation. In production:
+        - Mem0:  calls add() with run_id=session_id
+        - Zep:   calls threads.add_messages(thread_id)
+        - Letta: calls agents.messages.create(agent_id)
+
+        Default: falls back to write() with session_id in metadata.
+        """
+        return await self.write(
+            content=f"[{message.role}] {message.content}",
+            metadata=MemoryMetadata(session_id=session_id),
+            memory_type=MemoryType.EPISODIC,
+        )
+
+    async def get_session_context(
+        self,
+        session_id: str,
+        query: str | None = None,
+    ) -> SessionContext:
+        """Get the memory context for a session.
+
+        Returns what the memory system "knows" from this session --
+        extracted facts, summaries, and relevant memories.
+
+        Override to use the provider's native context retrieval:
+        - Mem0:  search() with run_id filter
+        - Zep:   threads.get_user_context(thread_id)
+        - Letta: read core memory blocks + archival search
+
+        Default: searches all memories filtered by session_id.
+        """
+        results = await self.search(
+            query=query or "",
+            limit=20,
+            filters=SearchFilters(session_id=session_id),
+        )
+        facts = [r.entry.content for r in results]
+        return SessionContext(session_id=session_id, facts=facts)
 
     # ── Lifecycle Hooks ────────────────────────────────────────
 

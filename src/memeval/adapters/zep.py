@@ -29,8 +29,10 @@ from memeval.protocol.types import (
     MemoryEntry,
     MemoryMetadata,
     MemoryType,
+    Message,
     SearchFilters,
     SearchResult,
+    SessionContext,
     WriteResult,
 )
 
@@ -58,6 +60,7 @@ class ZepAdapter(MemoryProtocol):
         # Local store for key-based operations (Zep is graph-based, not key-based)
         self._store: dict[str, dict[str, Any]] = {}
         self._episode_ids: list[str] = []  # track Zep episode UUIDs
+        self._threads: dict[str, str] = {}  # thread_id -> user_id
 
         try:
             from zep_cloud.client import Zep
@@ -307,9 +310,102 @@ class ZepAdapter(MemoryProtocol):
             await self.delete(key)
         return await self.write(merged)
 
+    # ── Session Operations (native thread support) ──────────────
+
+    async def create_session(
+        self, *, session_id: str | None = None, user_id: str | None = None
+    ) -> str:
+        """Create a Zep thread for the user."""
+        async with self._track("create_session"):
+            uid = user_id or self._default_user_id
+            try:
+                thread = self._client.threads.create(user_id=uid)  # type: ignore[attr-defined]
+                thread_id = thread.id if hasattr(thread, "id") else str(thread)
+                self._threads[thread_id] = uid
+                return thread_id
+            except Exception:
+                fallback = session_id or f"thread_{uuid.uuid4().hex[:12]}"
+                self._threads[fallback] = uid
+                return fallback
+
+    async def add_message(self, session_id: str, message: Message) -> WriteResult:
+        """Add a message to a Zep thread."""
+
+        async with self._track("add_message") as record:
+            success = False
+            try:
+                from zep_cloud.types import Message as ZepMessage
+
+                self._client.threads.add_messages(  # type: ignore[attr-defined]
+                    session_id,
+                    messages=[ZepMessage(  # type: ignore[call-arg]
+                        role=message.role,
+                        role_type=message.role,
+                        content=message.content,
+                    )],
+                )
+                success = True
+            except Exception:
+                pass
+
+            # Also store locally
+            self._store[f"msg_{uuid.uuid4().hex[:8]}"] = {
+                "content": message.content,
+                "user_id": self._threads.get(session_id, self._default_user_id),
+                "memory_type": MemoryType.EPISODIC,
+                "metadata": MemoryMetadata(session_id=session_id),
+                "created_at": datetime.now(),
+            }
+
+        return WriteResult(
+            key=f"msg_{session_id}",
+            success=success,
+            latency_ms=record["latency_ms"],
+        )
+
+    async def get_session_context(
+        self, session_id: str, query: str | None = None
+    ) -> SessionContext:
+        """Get context from a Zep thread."""
+
+        async with self._track("get_session_context"):
+            facts: list[str] = []
+
+            try:
+                ctx = self._client.threads.get_user_context(session_id)  # type: ignore[attr-defined]
+                if hasattr(ctx, "facts") and ctx.facts:
+                    facts = [str(f) for f in ctx.facts]
+                elif hasattr(ctx, "context") and ctx.context:
+                    facts = [str(ctx.context)]
+            except Exception:
+                pass
+
+            # Fallback: search the user's graph
+            if not facts:
+                uid = self._threads.get(session_id, self._default_user_id)
+                if query:
+                    try:
+                        results = self._client.graph.search(
+                            user_id=uid, query=query, limit=10,
+                        )
+                        for edge in (results.edges or []):
+                            fact = getattr(edge, "fact", str(edge))
+                            facts.append(str(fact))
+                    except Exception:
+                        pass
+
+            # Final fallback: local store
+            if not facts:
+                for stored in self._store.values():
+                    if stored.get("metadata") and stored["metadata"].session_id == session_id:
+                        facts.append(stored["content"])
+
+            return SessionContext(session_id=session_id, facts=facts)
+
     async def reset(self) -> None:
         self._store.clear()
         self._episode_ids.clear()
+        self._threads.clear()
         # Delete the user (which clears all their graph data)
         try:
             self._client.user.delete(self._default_user_id)

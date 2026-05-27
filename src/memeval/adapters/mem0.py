@@ -19,8 +19,10 @@ from memeval.protocol.types import (
     MemoryEntry,
     MemoryMetadata,
     MemoryType,
+    Message,
     SearchFilters,
     SearchResult,
+    SessionContext,
     WriteResult,
 )
 
@@ -247,11 +249,68 @@ class Mem0Adapter(MemoryProtocol):
 
         return await self.write(merged)
 
+    # ── Session Operations (native run_id support) ──────────────
+
+    async def create_session(
+        self, *, session_id: str | None = None, user_id: str | None = None
+    ) -> str:
+        import uuid
+
+        return session_id or f"run_{uuid.uuid4().hex[:12]}"
+
+    async def add_message(self, session_id: str, message: Message) -> WriteResult:
+        """Add a message using Mem0's native run_id for session scoping."""
+
+        async with self._track("add_message") as record:
+            messages = [{"role": message.role, "content": message.content}]
+            kwargs: dict[str, Any] = {
+                "user_id": self._default_user_id,
+                "run_id": session_id,
+            }
+
+            result = self._client.add(messages, **kwargs)
+
+            mem_id = None
+            if isinstance(result, dict) and result.get("results"):
+                mem_id = result["results"][0].get("id")
+
+        return WriteResult(
+            key=mem_id or f"mem0_{session_id}",
+            success=mem_id is not None,
+            latency_ms=record["latency_ms"],
+        )
+
+    async def get_session_context(
+        self, session_id: str, query: str | None = None
+    ) -> SessionContext:
+        """Get context scoped to a specific Mem0 run_id."""
+
+        async with self._track("get_session_context"):
+            if query:
+                result = self._client.search(
+                    query,
+                    filters={"user_id": self._default_user_id, "run_id": session_id},
+                    limit=20,
+                )
+                items = result.get("results", []) if isinstance(result, dict) else []
+                facts = [item.get("memory", "") for item in items]
+            else:
+                result = self._client.get_all(
+                    filters={"user_id": self._default_user_id, "run_id": session_id},
+                    limit=50,
+                )
+                items = result.get("results", []) if isinstance(result, dict) else []
+                facts = [item.get("memory", "") for item in items]
+
+            return SessionContext(
+                session_id=session_id,
+                facts=facts,
+                raw={"items": items},
+            )
+
     async def reset(self) -> None:
-        # Delete all tracked memories individually
         for key in list(self._key_map.keys()):
             await self.delete(key)
-        # Also try bulk delete
         try:
             self._client.delete_all(user_id=self._default_user_id)
         except Exception:

@@ -30,8 +30,10 @@ from memeval.protocol.types import (
     MemoryEntry,
     MemoryMetadata,
     MemoryType,
+    Message,
     SearchFilters,
     SearchResult,
+    SessionContext,
     WriteResult,
 )
 
@@ -284,9 +286,88 @@ class LettaAdapter(MemoryProtocol):
             await self.delete(key)
         return await self.write(merged)
 
+    # ── Session Operations (agent = session) ─────────────────────
+
+    async def create_session(
+        self, *, session_id: str | None = None, user_id: str | None = None
+    ) -> str:
+        """In Letta, creating a session means using the agent.
+        The agent_id IS the session -- it maintains state across messages.
+        """
+        if self._agent_id:
+            return self._agent_id
+        self._ensure_agent()
+        return self._agent_id or f"letta_{uuid.uuid4().hex[:12]}"
+
+    async def add_message(self, session_id: str, message: Message) -> WriteResult:
+        """Send a message to the Letta agent. The agent maintains context."""
+
+        async with self._track("add_message") as record:
+            success = False
+            if self._agent_id:
+                try:
+                    self._client.agents.messages.create(
+                        agent_id=self._agent_id,
+                        messages=[{"role": "user", "content": message.content}],  # type: ignore[typeddict-item]
+                    )
+                    success = True
+                except Exception:
+                    pass
+
+            # Also store locally
+            key = f"letta_msg_{uuid.uuid4().hex[:8]}"
+            self._store[key] = {
+                "content": message.content,
+                "memory_type": MemoryType.EPISODIC,
+                "metadata": MemoryMetadata(session_id=session_id),
+                "created_at": datetime.now(),
+            }
+
+        return WriteResult(key=key, success=success, latency_ms=record["latency_ms"])
+
+    async def get_session_context(
+        self, session_id: str, query: str | None = None
+    ) -> SessionContext:
+        """Get context from the Letta agent's memory."""
+
+        async with self._track("get_session_context"):
+            facts: list[str] = []
+
+            if self._agent_id:
+                # Read core memory blocks (always-in-context memory)
+                try:
+                    blocks = self._client.agents.blocks.list(agent_id=self._agent_id)
+                    for block in blocks:
+                        if block.value and block.value.strip():
+                            facts.append(f"[{block.label}] {block.value}")
+                except Exception:
+                    pass
+
+                # Search archival memory if query provided
+                if query:
+                    try:
+                        passages = self._client.agents.passages.list(  # type: ignore[call-arg]
+                            agent_id=self._agent_id,
+                            query_text=query,
+                            limit=10,
+                        )
+                        for p in (passages or []):
+                            text = getattr(p, "text", str(p))
+                            facts.append(text)
+                    except Exception:
+                        pass
+
+            # Fallback: local store
+            if not facts:
+                for stored in self._store.values():
+                    meta = stored.get("metadata", MemoryMetadata())
+                    if meta.session_id == session_id:
+                        facts.append(stored["content"])
+
+            return SessionContext(session_id=session_id, facts=facts)
+
     async def reset(self) -> None:
         self._store.clear()
-        # Delete and recreate the agent for a clean slate
         if self._agent_id:
             try:
                 self._client.agents.delete(agent_id=self._agent_id)
