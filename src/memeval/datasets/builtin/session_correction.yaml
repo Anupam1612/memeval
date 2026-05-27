@@ -1,0 +1,49 @@
+name: "Session: Mid-Conversation Correction"
+description: "Tests whether corrections within a conversation override previous statements"
+version: "1.0"
+memory_types_tested: [episodic, semantic]
+dimensions_tested: [update_propagation, recall_accuracy]
+
+steps:
+  - create_session:
+      session_id: "chat_correction"
+      user_id: "user_bob"
+
+  # Turn 1: User states a preference
+  - add_message:
+      session_id: "chat_correction"
+      role: "user"
+      content: "I want to book a flight to Tokyo for next week"
+
+  # Turn 2: Agent confirms
+  - add_message:
+      session_id: "chat_correction"
+      role: "assistant"
+      content: "I will look into flights to Tokyo for next week"
+
+  # Turn 3: User corrects themselves
+  - add_message:
+      session_id: "chat_correction"
+      role: "user"
+      content: "Actually, change that to Seoul instead of Tokyo. I mixed up the destinations."
+
+  # Turn 4: User adds detail
+  - add_message:
+      session_id: "chat_correction"
+      role: "user"
+      content: "And I need a window seat if possible"
+
+  # Verify the correction is reflected
+  - assert_context:
+      session_id: "chat_correction"
+      query: "Where does the user want to fly?"
+      expected_contains: ["Seoul"]
+
+  - assert_context:
+      session_id: "chat_correction"
+      query: "What seat preference?"
+      expected_contains: ["window"]
+
+thresholds:
+  update_propagation: 0.7
+  recall_accuracy: 0.7

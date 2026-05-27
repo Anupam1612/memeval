@@ -1,0 +1,48 @@
+name: "Session: Basic Multi-Turn Recall"
+description: "Tests whether facts shared in a conversation are remembered within the same session"
+version: "1.0"
+memory_types_tested: [episodic, semantic]
+dimensions_tested: [recall_accuracy]
+
+steps:
+  - create_session:
+      session_id: "chat_001"
+      user_id: "user_alice"
+
+  # Turn 1: User introduces themselves
+  - add_message:
+      session_id: "chat_001"
+      role: "user"
+      content: "Hi, my name is Alice and I work at Acme Corp as a data scientist"
+
+  # Turn 2: User shares a preference
+  - add_message:
+      session_id: "chat_001"
+      role: "user"
+      content: "I prefer Python for data analysis but use SQL for querying databases"
+
+  # Turn 3: User shares a constraint
+  - add_message:
+      session_id: "chat_001"
+      role: "user"
+      content: "I have a deadline next Friday for the quarterly report"
+
+  # Turn 4: Verify the agent remembers all three facts
+  - assert_context:
+      session_id: "chat_001"
+      query: "What do I know about this user?"
+      expected_contains: ["Alice", "Acme"]
+      min_facts: 1
+
+  - assert_context:
+      session_id: "chat_001"
+      query: "What programming language does the user prefer?"
+      expected_contains: ["Python"]
+
+  - assert_context:
+      session_id: "chat_001"
+      query: "Does the user have any deadlines?"
+      expected_contains: ["Friday"]
+
+thresholds:
+  recall_accuracy: 0.8

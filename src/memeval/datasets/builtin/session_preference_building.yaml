@@ -1,0 +1,65 @@
+name: "Session: Progressive Preference Building"
+description: "Tests whether preferences shared across multiple turns accumulate correctly"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [recall_accuracy]
+
+steps:
+  - create_session:
+      session_id: "prefs_session"
+      user_id: "user_grace"
+
+  # Preferences shared one at a time across turns
+  - add_message:
+      session_id: "prefs_session"
+      role: "user"
+      content: "I am a vegetarian so no meat dishes please"
+
+  - add_message:
+      session_id: "prefs_session"
+      role: "assistant"
+      content: "Noted, vegetarian only. Any allergies?"
+
+  - add_message:
+      session_id: "prefs_session"
+      role: "user"
+      content: "Yes, I am allergic to peanuts"
+
+  - add_message:
+      session_id: "prefs_session"
+      role: "assistant"
+      content: "Got it. No meat and no peanuts. Anything else?"
+
+  - add_message:
+      session_id: "prefs_session"
+      role: "user"
+      content: "I prefer spicy food and my favorite cuisine is Thai"
+
+  - add_message:
+      session_id: "prefs_session"
+      role: "user"
+      content: "Budget is around $30 per meal"
+
+  # All preferences should be accessible as a complete picture
+  - assert_context:
+      session_id: "prefs_session"
+      query: "dietary restrictions"
+      expected_contains: ["vegetarian"]
+
+  - assert_context:
+      session_id: "prefs_session"
+      query: "allergies"
+      expected_contains: ["peanut"]
+
+  - assert_context:
+      session_id: "prefs_session"
+      query: "food preferences"
+      expected_contains: ["spicy"]
+
+  - assert_context:
+      session_id: "prefs_session"
+      query: "meal budget"
+      expected_contains: ["30"]
+
+thresholds:
+  recall_accuracy: 0.7

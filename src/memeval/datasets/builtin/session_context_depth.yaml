@@ -1,0 +1,87 @@
+name: "Session: Context Depth (10 Turns)"
+description: "Tests whether the memory system retains information from early turns in a long conversation"
+version: "1.0"
+memory_types_tested: [episodic, semantic]
+dimensions_tested: [recall_accuracy]
+
+steps:
+  - create_session:
+      session_id: "deep_chat"
+      user_id: "user_carol"
+
+  # Turn 1: Key fact (should be remembered at the end)
+  - add_message:
+      session_id: "deep_chat"
+      role: "user"
+      content: "My budget for this project is exactly $25,000"
+
+  # Turns 2-9: Filler conversation that pushes turn 1 deeper
+  - add_message:
+      session_id: "deep_chat"
+      role: "user"
+      content: "The project is a website redesign for our client GreenTech"
+
+  - add_message:
+      session_id: "deep_chat"
+      role: "assistant"
+      content: "I understand. A website redesign for GreenTech. What are the main goals?"
+
+  - add_message:
+      session_id: "deep_chat"
+      role: "user"
+      content: "Improve mobile responsiveness and page load speed"
+
+  - add_message:
+      session_id: "deep_chat"
+      role: "assistant"
+      content: "Great goals. Do you have a preferred tech stack?"
+
+  - add_message:
+      session_id: "deep_chat"
+      role: "user"
+      content: "We use Next.js for the frontend and Supabase for the backend"
+
+  - add_message:
+      session_id: "deep_chat"
+      role: "assistant"
+      content: "Good choices. What about the timeline?"
+
+  - add_message:
+      session_id: "deep_chat"
+      role: "user"
+      content: "We need to launch by August 15th"
+
+  - add_message:
+      session_id: "deep_chat"
+      role: "user"
+      content: "The design team is led by someone named Priya"
+
+  - add_message:
+      session_id: "deep_chat"
+      role: "user"
+      content: "Also, the client wants dark mode as a mandatory feature"
+
+  # Turn 10+: Now verify that turn 1 fact (budget) is still accessible
+  - assert_context:
+      session_id: "deep_chat"
+      query: "What is the project budget?"
+      expected_contains: ["25,000"]
+
+  # Also verify middle and recent facts
+  - assert_context:
+      session_id: "deep_chat"
+      query: "What tech stack is being used?"
+      expected_contains: ["Next.js"]
+
+  - assert_context:
+      session_id: "deep_chat"
+      query: "When is the launch date?"
+      expected_contains: ["August"]
+
+  - assert_context:
+      session_id: "deep_chat"
+      query: "Who leads the design team?"
+      expected_contains: ["Priya"]
+
+thresholds:
+  recall_accuracy: 0.7
