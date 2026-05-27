@@ -52,7 +52,7 @@ async def test_consistency_no_contradictions(adapter, runner):
     scenarios = load_builtin_scenarios()
     basic = next(s for s in scenarios if s.name == "Basic Recall")
 
-    metric = ConsistencyMetric(threshold=0.8, mode="heuristic")
+    metric = ConsistencyMetric(threshold=0.8, mode="basic")
     result = await runner.run(basic, adapter, [metric])
 
     mr = result.metric_results["consistency"]
@@ -67,7 +67,7 @@ async def test_consistency_with_contradictions(adapter):
     await adapter.write("User is single and not in a relationship", key="c1")
     await adapter.write("User is married and has two kids", key="c2")
 
-    metric = ConsistencyMetric(threshold=0.9, mode="heuristic")
+    metric = ConsistencyMetric(threshold=0.9, mode="basic")
 
     # Create a minimal scenario result
     from memeval.scenarios.types import Scenario, ScenarioResult
