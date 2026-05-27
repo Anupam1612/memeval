@@ -1,72 +1,149 @@
 # memeval
 
-**pytest for agent memory** — evaluate how well your AI agent remembers, retrieves, forgets, and isolates stored information.
+**Find out why your AI agent forgot.**
 
-No existing tool lets teams answer: *"Is my agent's memory actually working?"* memeval fills that gap.
+Your agent told a customer they're vegan -- then recommended a steak restaurant. Your support bot asked for the account ID the customer already gave. Your personal assistant lost the project deadline mentioned three messages ago.
 
-```
-                    MEMEVAL COMPARATIVE BENCHMARK                     
-┏━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━━━━━┓
-┃ Dimension          ┃ in_memory ┃  mem0 ┃   zep ┃ letta ┃   Best    ┃
-┡━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━━━━━┩
-│ recall_accuracy    │     0.858 │ 1.000 │ 0.858 │ 0.858 │   mem0    │
-│ relevance          │     0.610 │ 0.904 │ 0.610 │ 0.610 │   mem0    │
-│ update_propagation │     0.583 │ 1.000 │ 0.583 │ 0.583 │   mem0    │
-│ latency_cost       │     1.000 │ 0.840 │ 1.000 │ 1.000 │   tie     │
-│ consistency        │     0.917 │ 0.917 │ 0.917 │ 0.917 │   tie     │
-│ forgetting_quality │     1.000 │ 1.000 │ 1.000 │ 1.000 │   tie     │
-│ privacy_isolation  │     1.000 │ 1.000 │ 1.000 │ 1.000 │   tie     │
-├────────────────────┼───────────┼───────┼───────┼───────┼───────────┤
-│ OVERALL            │     0.853 │ 0.952 │ 0.853 │ 0.853 │   mem0    │
-└────────────────────┴───────────┴───────┴───────┴───────┴───────────┘
-```
+These are memory failures. They happen in production every day. And until now, there was no way to test for them before they reach your users.
 
-## Why memeval?
-
-Every layer of the AI agent stack has evaluation tools — **except memory**.
-
-| Layer | Eval Tool | Exists? |
-|-------|-----------|---------|
-| LLM prompts | LangSmith, Braintrust | Yes |
-| RAG retrieval | Ragas, DeepEval | Yes |
-| API endpoints | Postman, pytest | Yes |
-| **Agent memory** | **memeval** | **Now it does** |
-
-## What it evaluates
-
-memeval tests **8 dimensions** of memory quality:
-
-| Dimension | What it measures |
-|-----------|-----------------|
-| **Recall Accuracy** | Can the system retrieve what was stored? |
-| **Relevance** | Does it return the *right* memories? (MRR, NDCG@k) |
-| **Consistency** | Are there contradictions in stored facts? |
-| **Update Propagation** | Do corrections propagate correctly? |
-| **Forgetting Quality** | Does it forget what it should, keep what it shouldn't? |
-| **Latency & Cost** | p50/p95/p99 latency, token cost per operation |
-| **Scalability** | How does performance degrade at scale? |
-| **Privacy Isolation** | Does data leak between users/sessions? |
-
-## Quick Start
+memeval detects memory corruption, measures retrieval quality, and catches context loss in multi-turn conversations -- across any memory provider.
 
 ```bash
 pip install memoryeval
+memeval run --adapter in_memory
 ```
 
-### Run built-in scenarios
+```
+Session: Mid-Conversation Correction
+  [turn 1] User: "Book a flight to Tokyo"
+  [turn 3] User: "Actually, change that to Seoul"
+  [assert] Query: "Where does the user want to fly?"
+  [result] Retrieved: "Seoul"  -- PASS
+
+Preference Update
+  [setup]  Stored: "User is vegetarian"
+  [step 1] Stored: "User switched to vegan"
+  [assert] Query: "dietary preferences"
+  [result] Retrieved: "vegetarian" AND "vegan"  -- FAIL: old fact not replaced
+```
+
+## What it catches
+
+**Contradiction retention** -- your memory stores "User earns $80K" and "User earns $120K" side by side. memeval detects this using embedding similarity analysis, not keyword matching.
+
+**Context loss in conversations** -- a fact shared in turn 1 disappears by turn 10. memeval tests recall depth across 10+ turn conversations.
+
+**Stale data** -- user corrected a preference but the old value still appears in search results. memeval verifies that updates propagate.
+
+**Cross-user data leakage** -- user A's private data shows up in user B's session. memeval plants sentinel values and probes for leaks.
+
+**Silent forgetting** -- deleted facts are gone, but so are facts that should have survived. memeval measures both forgetting precision and retention rate.
+
+## Quick start
 
 ```bash
-# Test against the built-in in-memory adapter
+pip install memoryeval
+
+# Run 30 built-in scenarios against the test adapter
 memeval run --adapter in_memory
 
-# Test against Mem0 (requires OPENAI_API_KEY)
+# Test against real Mem0 (requires OPENAI_API_KEY)
+pip install memoryeval[mem0]
 memeval run --adapter mem0
 
 # Compare providers side-by-side
-memeval benchmark --adapters in_memory --adapters mem0 --adapters zep
+memeval benchmark --adapters in_memory --adapters mem0
 ```
 
-### Use in Python
+## Multi-turn conversation testing
+
+memeval tests what users actually care about -- does the agent remember what was said earlier in this conversation?
+
+```yaml
+name: "Customer Support Multi-Turn"
+steps:
+  - create_session:
+      session_id: "ticket_789"
+
+  - add_message:
+      session_id: "ticket_789"
+      role: "user"
+      content: "I was charged $99 but my plan is Basic at $29"
+
+  - add_message:
+      session_id: "ticket_789"
+      role: "user"
+      content: "My account email is frank@email.com"
+
+  - add_message:
+      session_id: "ticket_789"
+      role: "user"
+      content: "Please refund the difference"
+
+  # 3 turns later, does the agent still know the issue?
+  - assert_context:
+      session_id: "ticket_789"
+      query: "What is the billing issue?"
+      expected_contains: ["99"]
+```
+
+Each adapter maps sessions to the provider's native concept:
+- **Mem0**: `run_id`
+- **Zep**: threads
+- **Letta**: agent message sequence
+
+## 30 built-in scenarios
+
+| Category | Scenarios | What they test |
+|----------|-----------|---------------|
+| **Session** (6) | Basic recall, correction, 10-turn depth, isolation, support, preferences | Multi-turn conversation memory |
+| **Core** (7) | Basic recall, adversarial, multi-hop, entity resolution, negation, high-volume, scale | Fact storage and retrieval |
+| **Lifecycle** (6) | Preference update, contradiction, rapid updates, stale data, forgetting, GDPR deletion | Memory evolution over time |
+| **Governance** (3) | Privacy isolation, multi-user isolation, cross-session recall | Data boundaries |
+| **Edge cases** (2) | UTF-8 characters, empty/boundary conditions | Robustness |
+| **Operations** (6) | Cascading deletion, consolidation, support handoff, context restoration, soft contradictions, scale stress | Memory management |
+
+## What it measures
+
+7 evaluation dimensions, each with concrete metrics:
+
+| Dimension | What it catches | How |
+|-----------|----------------|-----|
+| **Recall** | "Agent forgot what I said" | Store facts, search for them, measure hit rate |
+| **Relevance** | "Agent returned the wrong memory" | MRR and NDCG@k on ranked results |
+| **Consistency** | "Agent has contradictory facts" | Embedding similarity to detect same-topic divergence |
+| **Update propagation** | "Old value still appears after correction" | Update fact, verify old value is gone |
+| **Forgetting quality** | "Deleted the wrong things" | Selective deletion precision + retention rate |
+| **Latency** | "Memory operations are too slow" | p50/p95/p99 for reads vs writes separately |
+| **Privacy** | "User A's data leaked to User B" | Sentinel-based cross-session probing |
+
+## Use in CI/CD
+
+```bash
+# JSON reports for pipeline integration
+memeval run --adapter mem0 --output report.json
+
+# Reproducible multi-run benchmarks
+python scripts/run_benchmark.py --adapter mem0 --runs 3 --output results/
+```
+
+```yaml
+# .github/workflows/memeval.yml
+- name: Memory evaluation
+  run: memeval run --adapter mem0 --output report.json
+  env:
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+## Use with pytest
+
+```bash
+pytest --memeval-adapter=mem0
+```
+
+memeval auto-discovers YAML scenario files. Write your own or use the 30 built-in ones.
+
+## Use in Python
 
 ```python
 import asyncio
@@ -75,157 +152,46 @@ from memeval import evaluate, InMemoryAdapter
 async def main():
     adapter = InMemoryAdapter()
     results = await evaluate(adapter=adapter, scenarios="builtin")
-    
+
     for r in results:
-        print(f"{r.scenario.name}: {'PASS' if r.passed else 'FAIL'}")
-        for name, mr in r.metric_results.items():
-            print(f"  {name}: {mr.score:.3f}")
+        status = "PASS" if r.passed else "FAIL"
+        print(f"[{status}] {r.scenario.name}")
 
 asyncio.run(main())
 ```
 
-### Use with pytest
+## Supported providers
 
-```bash
-# Auto-discovers YAML scenario files
-pytest --memeval-adapter=mem0
-
-# Or run specific scenarios
-pytest my_scenarios/ --memeval-adapter=mem0
-```
-
-### Write custom scenarios (YAML)
-
-```yaml
-name: "User Preference Update"
-description: "Tests whether corrections propagate"
-dimensions_tested: [recall_accuracy, consistency, update_propagation]
-
-setup:
-  - write:
-      key: "diet"
-      content: "User is vegetarian"
-
-steps:
-  - write:
-      key: "diet_v2"
-      content: "User switched to vegan diet"
-
-  - assert_search:
-      query: "What are the user's dietary preferences?"
-      expected_contains: ["vegan"]
-      expected_not_contains: ["vegetarian"]
-
-thresholds:
-  recall_accuracy: 0.9
-  consistency: 1.0
-```
-
-### JSON reports for CI/CD
-
-```bash
-memeval run --adapter mem0 --output report.json
-```
-
-```json
-{
-  "summary": {
-    "scenarios_run": 10,
-    "scenarios_passed": 8,
-    "overall_score": 0.952
-  },
-  "dimensions": {
-    "recall_accuracy": {"score": 1.0, "passed": true},
-    "latency_cost": {"score": 0.84, "passed": true}
-  }
-}
-```
-
-## Supported Memory Providers
-
-| Provider | Adapter | Install |
-|----------|---------|---------|
-| In-Memory (testing) | `in_memory` | Built-in |
-| [Mem0](https://mem0.ai) | `mem0` | `pip install memoryeval[mem0]` |
-| [Zep](https://getzep.com) | `zep` | `pip install memoryeval[zep]` |
-| [Letta](https://letta.com) | `letta` | `pip install memoryeval[letta]` |
-| Custom | Implement `MemoryProtocol` | See [docs](docs/writing-adapters.md) |
-
-### Writing a custom adapter
-
-```python
-from memeval.protocol import MemoryProtocol, MemoryEntry, WriteResult
-
-class MyMemoryAdapter(MemoryProtocol):
-    async def write(self, content, *, key=None, metadata=None, memory_type="semantic"):
-        # Your implementation
-        ...
-    
-    async def search(self, query, *, limit=10, filters=None):
-        # Your implementation
-        ...
-    
-    # ... implement all 7 SMP operations
-```
-
-## Architecture
-
-memeval is built on the **Standard Memory Protocol (SMP)** — a 7-operation interface that any memory backend implements via an adapter:
-
-```
-┌─────────────────────────────────────────────┐
-│  Standard Memory Protocol (SMP)              │
-│  write | read | search | update | delete     │
-│  list_all | consolidate                      │
-├─────────────────────────────────────────────┤
-│  Adapters: Mem0 | Zep | Letta | Custom      │
-├─────────────────────────────────────────────┤
-│  Evaluation Harness                          │
-│  YAML scenarios + 8 metric dimensions        │
-├─────────────────────────────────────────────┤
-│  Reporting: Console | JSON | CI/CD           │
-└─────────────────────────────────────────────┘
-```
+| Provider | Session model | Install |
+|----------|--------------|---------|
+| In-Memory (testing) | dict-based | Built-in |
+| [Mem0](https://mem0.ai) | run_id | `pip install memoryeval[mem0]` |
+| [Zep](https://getzep.com) | threads | `pip install memoryeval[zep]` |
+| [Letta](https://letta.com) | agent state | `pip install memoryeval[letta]` |
+| Custom | You define it | See [writing adapters](docs/writing-adapters.md) |
 
 ## Benchmark findings
 
-Results from a single-run benchmark on 2026-05-27. Environment: memeval 0.1.1, Python 3.14, macOS ARM64. Mem0 self-hosted with gpt-4o-mini. Not statistically significant -- see [benchmark methodology](docs/benchmark-methodology.md) for how to run reproducible multi-run benchmarks.
+Single-run results from 2026-05-27 (memeval 0.1.2, Python 3.14, macOS ARM64, Mem0 self-hosted with gpt-4o-mini). Not statistically significant -- see [methodology](docs/benchmark-methodology.md) for reproducible multi-run benchmarks.
 
-Testing against real Mem0:
-
-- **Recall: 1.000** -- LLM fact extraction makes retrieval excellent
-- **Consistency: 0.917** -- Mem0 stores both old and new facts, doesn't auto-resolve contradictions
-- **Latency: write p95 ~3,500ms** -- every write calls OpenAI for extraction; search p95 ~500ms
-- **Update propagation: 1.000** -- corrections do propagate through search
-
-### Reproducing these results
+| Finding | Detail |
+|---------|--------|
+| Mem0 recall: 1.000 | LLM fact extraction makes semantic retrieval excellent |
+| Mem0 consistency: 0.917 | Stores both old and new facts -- does not auto-resolve contradictions |
+| Mem0 write latency: p95 ~3,500ms | Every write calls OpenAI for extraction |
+| Mem0 search latency: p95 ~500ms | Retrieval is fast once facts are indexed |
+| Zep graph: async indexing | Facts not searchable immediately after write |
 
 ```bash
-pip install memoryeval[mem0]
-export OPENAI_API_KEY=sk-...
-
-# Single run (quick)
-python scripts/run_benchmark.py --adapter in_memory --adapter mem0
-
-# Multi-run for statistical significance
-python scripts/run_benchmark.py --adapter mem0 --runs 3 --output results/
+# Reproduce
+python scripts/run_benchmark.py --adapter in_memory --adapter mem0 --output results/
 ```
 
-See [docs/benchmark-methodology.md](docs/benchmark-methodology.md) for full details on methodology, conditions, and how to interpret results.
+## Documentation
 
-## Project Structure
-
-```
-src/memeval/
-├── protocol/       # Standard Memory Protocol (SMP)
-├── adapters/       # Mem0, Zep, Letta, InMemory
-├── metrics/        # 8 evaluation dimensions
-├── scenarios/      # YAML loader + execution engine
-├── reporting/      # Console scorecard, JSON, comparisons
-├── datasets/       # 24 built-in test scenarios
-├── cli.py          # memeval run/benchmark/init
-└── plugin.py       # pytest auto-discovery
-```
+- [Getting started](docs/getting-started.md)
+- [Writing custom adapters](docs/writing-adapters.md)
+- [Benchmark methodology](docs/benchmark-methodology.md)
 
 ## License
 
