@@ -266,6 +266,95 @@ def diagnose(adapter: str, scenarios: str, failures_only: bool) -> None:
     asyncio.run(_run_diagnose(adapter, scenarios, failures_only))
 
 
+@app.command()
+@click.option("--adapter", default="in_memory", show_default=True)
+@click.option("--limit", default=50, help="Number of samples to run", show_default=True)
+@click.option(
+    "--types", default=None,
+    help="Comma-separated question types to filter",
+)
+@click.option(
+    "--scoring", default="embedding",
+    type=click.Choice(["llm", "embedding", "keyword"]),
+    help="Scoring method: llm (most accurate), embedding, keyword (fastest)",
+    show_default=True,
+)
+@click.option("--verbose", is_flag=True)
+def longmemeval(
+    adapter: str, limit: int, types: str | None, scoring: str, verbose: bool
+) -> None:
+    """Run the LongMemEval benchmark (Wu et al., ICLR 2025).
+
+    Tests 5 memory abilities across 500 multi-session conversation QA pairs.
+    Requires: pip install huggingface_hub
+    """
+    asyncio.run(_run_longmemeval(adapter, limit, types, scoring, verbose))
+
+
+async def _run_longmemeval(
+    adapter_name: str, limit: int, types: str | None,
+    scoring: str, verbose: bool
+) -> None:
+    from rich.console import Console
+    from rich.table import Table
+
+    from memeval.benchmarks import LongMemEvalRunner
+
+    console = Console(stderr=True)
+    console.print("[bold]LongMemEval benchmark[/bold]")
+    console.print(f"  Adapter: {adapter_name}")
+    console.print(f"  Samples: {limit}")
+    console.print(f"  Scoring: {scoring}")
+
+    question_types = types.split(",") if types else None
+    adapter = _create_adapter(adapter_name)
+
+    runner = LongMemEvalRunner(
+        limit=limit, question_types=question_types, scoring=scoring
+    )
+    results = await runner.run(adapter, verbose=verbose)
+
+    # Print results table
+    table = Table(title="LongMemEval Results", show_header=True, header_style="bold")
+    table.add_column("Question Type", min_width=30)
+    table.add_column("Accuracy", justify="right")
+    table.add_column("Hits", justify="right")
+    table.add_column("Total", justify="right")
+
+    for qtype, stats in results.accuracy_by_type().items():
+        acc = f"{stats['accuracy']:.1%}"
+        table.add_row(qtype, acc, str(stats["hits"]), str(stats["total"]))
+
+    table.add_section()
+    table.add_row(
+        "[bold]OVERALL[/bold]",
+        f"[bold]{results.accuracy:.1%}[/bold]",
+        f"[bold]{results.hits}[/bold]",
+        f"[bold]{results.total}[/bold]",
+    )
+
+    console.print()
+    console.print(table)
+
+    # Reference baselines
+    from memeval.benchmarks.longmemeval import PAPER_BASELINES
+
+    ref_table = Table(
+        title="Reference baselines (from paper)",
+        show_header=True, header_style="bold",
+    )
+    ref_table.add_column("System", min_width=35)
+    ref_table.add_column("Overall", justify="right")
+
+    for name, scores in PAPER_BASELINES.items():
+        ref_table.add_row(name, f"{scores['overall']:.1%}")
+
+    console.print(ref_table)
+    console.print(f"\n  Scoring method: {results.scoring_method}")
+    console.print(f"  Avg confidence: {results.avg_confidence:.2f}")
+    console.print()
+
+
 async def _run_diagnose(
     adapter_name: str, scenarios_path: str, failures_only: bool
 ) -> None:
