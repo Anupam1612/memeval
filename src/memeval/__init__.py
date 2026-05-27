@@ -14,7 +14,7 @@ CLI:
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from memeval.adapters.in_memory import InMemoryAdapter
 from memeval.metrics import METRIC_REGISTRY

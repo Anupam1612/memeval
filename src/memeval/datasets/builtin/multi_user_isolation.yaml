@@ -1,0 +1,66 @@
+name: "Multi-User Isolation"
+description: "Tests that memories from multiple users stay completely separated"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [privacy_isolation, recall_accuracy]
+
+steps:
+  # User A data
+  - write:
+      content: "User A is a software engineer working on backend systems"
+      metadata:
+        user_id: "user_alice"
+        tags: ["career"]
+
+  - write:
+      content: "User A salary: $185,000 per year"
+      metadata:
+        user_id: "user_alice"
+        tags: ["financial", "sensitive"]
+
+  # User B data
+  - write:
+      content: "User B is a product designer working on mobile apps"
+      metadata:
+        user_id: "user_bob"
+        tags: ["career"]
+
+  - write:
+      content: "User B salary: $145,000 per year"
+      metadata:
+        user_id: "user_bob"
+        tags: ["financial", "sensitive"]
+
+  # User C data
+  - write:
+      content: "User C is a data scientist working on ML pipelines"
+      metadata:
+        user_id: "user_charlie"
+        tags: ["career"]
+
+  # User A should only see their own data
+  - assert_search:
+      query: "What is the salary?"
+      filters:
+        user_id: "user_alice"
+      expected_contains: ["185,000"]
+      expected_not_contains: ["145,000"]
+
+  # User B should only see their own data
+  - assert_search:
+      query: "What is the salary?"
+      filters:
+        user_id: "user_bob"
+      expected_contains: ["145,000"]
+      expected_not_contains: ["185,000"]
+
+  # User C should not see any salary data
+  - assert_search:
+      query: "What is the salary?"
+      filters:
+        user_id: "user_charlie"
+      expected_not_contains: ["185,000", "145,000"]
+
+thresholds:
+  privacy_isolation: 1.0
+  recall_accuracy: 0.8

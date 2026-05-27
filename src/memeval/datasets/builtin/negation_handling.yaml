@@ -1,0 +1,67 @@
+name: "Negation Handling"
+description: "Tests whether the memory system understands negated preferences and facts"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [recall_accuracy, relevance, consistency]
+
+setup:
+  - write:
+      key: "neg_spicy"
+      content: "User does not like spicy food at all"
+      memory_type: semantic
+      metadata:
+        tags: ["preference", "food"]
+
+  - write:
+      key: "neg_morning"
+      content: "User is not a morning person and prefers afternoon meetings"
+      memory_type: semantic
+      metadata:
+        tags: ["preference", "schedule"]
+
+  - write:
+      key: "neg_travel"
+      content: "User cannot travel internationally due to visa restrictions"
+      memory_type: semantic
+      metadata:
+        tags: ["constraint", "travel"]
+
+  - write:
+      key: "pos_coffee"
+      content: "User loves black coffee with no sugar"
+      memory_type: semantic
+      metadata:
+        tags: ["preference", "food"]
+
+  - write:
+      key: "pos_remote"
+      content: "User strongly prefers remote work over in-office"
+      memory_type: semantic
+      metadata:
+        tags: ["preference", "work"]
+
+steps:
+  - assert_search:
+      query: "Does the user like spicy food?"
+      expected_contains: ["not"]
+      min_results: 1
+
+  - assert_search:
+      query: "When should I schedule meetings with the user?"
+      expected_contains: ["afternoon"]
+      min_results: 1
+
+  - assert_search:
+      query: "Can the user travel internationally?"
+      expected_contains: ["cannot"]
+      min_results: 1
+
+  - assert_search:
+      query: "How does the user take their coffee?"
+      expected_contains: ["black"]
+      min_results: 1
+
+thresholds:
+  recall_accuracy: 0.7
+  relevance: 0.5
+  consistency: 0.8

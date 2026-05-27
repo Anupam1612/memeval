@@ -1,0 +1,39 @@
+name: "Empty and Edge Cases"
+description: "Tests graceful handling of empty queries, missing keys, and boundary conditions"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [recall_accuracy]
+
+setup:
+  - write:
+      key: "single_fact"
+      content: "The only stored fact: user prefers dark mode"
+      memory_type: semantic
+
+steps:
+  # Read a key that does not exist
+  - assert_read:
+      key: "nonexistent_key_xyz"
+      expected_not_contains: "anything"
+
+  # Search with a very specific query that should match
+  - assert_search:
+      query: "dark mode preference"
+      expected_contains: ["dark mode"]
+      min_results: 1
+
+  # Search with a query that should return nothing
+  - assert_search:
+      query: "quantum chromodynamics research papers"
+      expected_not_contains: ["dark mode"]
+
+  # Delete the only fact and verify store is empty
+  - delete:
+      key: "single_fact"
+
+  - assert_read:
+      key: "single_fact"
+      expected_not_contains: "dark mode"
+
+thresholds:
+  recall_accuracy: 0.7

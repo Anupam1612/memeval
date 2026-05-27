@@ -122,6 +122,8 @@ class ScenarioRunner:
             return await self._exec_update(step_params, adapter, step_index, start)
         elif step_type == StepType.DELETE:
             return await self._exec_delete(step_params, adapter, step_index, start)
+        elif step_type == StepType.CONSOLIDATE:
+            return await self._exec_consolidate(step_params, adapter, step_index, start)
         elif step_type == StepType.ASSERT_READ:
             return await self._exec_assert_read(step_params, adapter, step_index, start)
         elif step_type == StepType.ASSERT_SEARCH:
@@ -238,6 +240,22 @@ class ScenarioRunner:
             success=deleted,
             latency_ms=elapsed,
             data={"key": params["key"], "deleted": deleted},
+        )
+
+    async def _exec_consolidate(
+        self, params: dict, adapter: MemoryProtocol, idx: int, start: float
+    ) -> StepResult:
+        result = await adapter.consolidate(
+            source_keys=params["source_keys"],
+            strategy=params.get("strategy", "merge"),
+        )
+        elapsed = (time.perf_counter() - start) * 1000
+        return StepResult(
+            step_type=StepType.CONSOLIDATE,
+            step_index=idx,
+            success=result.success,
+            latency_ms=elapsed,
+            data={"key": result.key, "source_keys": params["source_keys"]},
         )
 
     async def _exec_assert_read(

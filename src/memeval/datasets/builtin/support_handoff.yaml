@@ -1,0 +1,73 @@
+name: "Support Ticket Handoff"
+description: "Tests that full context is preserved when conversation transfers between agents"
+version: "1.0"
+memory_types_tested: [semantic, episodic]
+dimensions_tested: [recall_accuracy, relevance]
+
+setup:
+  # Agent A gathers initial context
+  - write:
+      key: "ticket_issue"
+      content: "Customer reports billing error: charged $499 instead of $49 for monthly subscription"
+      memory_type: semantic
+      metadata:
+        session_id: "agent_a_session"
+        tags: ["ticket", "billing"]
+
+  - write:
+      key: "ticket_customer"
+      content: "Customer name: James Wilson, account ID: ACC-78234, plan: Professional"
+      memory_type: semantic
+      metadata:
+        session_id: "agent_a_session"
+        tags: ["ticket", "customer"]
+
+  - write:
+      key: "ticket_history"
+      content: "Agent A verified the overcharge in the billing system and confirmed it was a decimal error"
+      memory_type: episodic
+      metadata:
+        session_id: "agent_a_session"
+        tags: ["ticket", "investigation"]
+
+  - write:
+      key: "ticket_attempted"
+      content: "Agent A attempted refund but lacks authorization for amounts over $100"
+      memory_type: episodic
+      metadata:
+        session_id: "agent_a_session"
+        tags: ["ticket", "action"]
+
+  - write:
+      key: "ticket_escalation"
+      content: "Ticket escalated to Agent B for refund authorization"
+      memory_type: episodic
+      metadata:
+        session_id: "agent_a_session"
+        tags: ["ticket", "escalation"]
+
+steps:
+  # Agent B should have full context without re-asking
+  - assert_search:
+      query: "What is the customer's billing issue?"
+      expected_contains: ["499"]
+      min_results: 1
+
+  - assert_search:
+      query: "What is the customer's account information?"
+      expected_contains: ["James Wilson"]
+      min_results: 1
+
+  - assert_search:
+      query: "What has already been tried to resolve this?"
+      expected_contains: ["refund"]
+      min_results: 1
+
+  - assert_search:
+      query: "Why was this ticket escalated?"
+      expected_contains: ["authorization"]
+      min_results: 1
+
+thresholds:
+  recall_accuracy: 0.8
+  relevance: 0.6

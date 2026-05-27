@@ -1,0 +1,71 @@
+name: "Stale Data Supersession"
+description: "Tests that outdated facts are superseded when newer information arrives"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [update_propagation, consistency, recall_accuracy]
+
+setup:
+  - write:
+      key: "price_old"
+      content: "Product pricing: Basic plan is $10/month, Pro plan is $25/month"
+      memory_type: semantic
+      metadata:
+        tags: ["pricing", "outdated"]
+
+  - write:
+      key: "office_old"
+      content: "Company headquarters is at 100 Market Street, San Francisco"
+      memory_type: semantic
+      metadata:
+        tags: ["company", "outdated"]
+
+  - write:
+      key: "ceo_old"
+      content: "The company CEO is Richard Lawson"
+      memory_type: semantic
+      metadata:
+        tags: ["company", "outdated"]
+
+steps:
+  # New information supersedes old
+  - write:
+      key: "price_new"
+      content: "Updated pricing effective January 2026: Basic plan is $15/month, Pro plan is $35/month"
+      memory_type: semantic
+      metadata:
+        tags: ["pricing", "current"]
+
+  - write:
+      key: "office_new"
+      content: "Company relocated headquarters to 500 Howard Street, San Francisco in November 2025"
+      memory_type: semantic
+      metadata:
+        tags: ["company", "current"]
+
+  - write:
+      key: "ceo_new"
+      content: "New CEO appointed: Diana Park replaced Richard Lawson in December 2025"
+      memory_type: semantic
+      metadata:
+        tags: ["company", "current"]
+
+  # Queries should return current information
+  - assert_search:
+      query: "What is the current pricing?"
+      expected_contains: ["15"]
+      min_results: 1
+
+  - assert_search:
+      query: "Where is the company headquarters?"
+      expected_contains: ["500 Howard"]
+      min_results: 1
+
+  - assert_search:
+      query: "Who is the CEO?"
+      expected_contains: ["Diana Park"]
+      min_results: 1
+
+thresholds:
+  update_propagation: 0.7
+  consistency: 0.7
+  recall_accuracy: 0.7

@@ -15,6 +15,7 @@ class StepType(str, Enum):
     SEARCH = "search"
     UPDATE = "update"
     DELETE = "delete"
+    CONSOLIDATE = "consolidate"
     ASSERT_READ = "assert_read"
     ASSERT_SEARCH = "assert_search"
     WAIT = "wait"

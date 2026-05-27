@@ -1,0 +1,54 @@
+name: "UTF-8 Special Characters"
+description: "Tests that memories with non-ASCII characters are stored and retrieved without corruption"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [recall_accuracy]
+
+setup:
+  - write:
+      key: "chinese"
+      content: "User's favorite restaurant is in Beijing, called 'full_joy_garden'"
+      memory_type: semantic
+
+  - write:
+      key: "accent"
+      content: "User studied at Ecole Polytechnique in Montreal, Quebec"
+      memory_type: semantic
+
+  - write:
+      key: "japanese"
+      content: "User's shipping address is in Tokyo, Shibuya district"
+      memory_type: semantic
+
+  - write:
+      key: "arabic_name"
+      content: "User's business partner is named Ahmad from Dubai"
+      memory_type: semantic
+
+  - write:
+      key: "special_chars"
+      content: "Password hint: mother's maiden name contains an apostrophe (O'Brien)"
+      memory_type: semantic
+
+steps:
+  - assert_search:
+      query: "Where is the user's favorite restaurant?"
+      expected_contains: ["Beijing"]
+      min_results: 1
+
+  - assert_search:
+      query: "Where did the user study?"
+      expected_contains: ["Montreal"]
+      min_results: 1
+
+  - assert_search:
+      query: "Where is the user's shipping address?"
+      expected_contains: ["Tokyo"]
+      min_results: 1
+
+  - assert_read:
+      key: "special_chars"
+      expected_contains: "O'Brien"
+
+thresholds:
+  recall_accuracy: 0.8

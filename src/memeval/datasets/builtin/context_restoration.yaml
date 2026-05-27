@@ -1,0 +1,80 @@
+name: "Context Restoration After Gap"
+description: "Tests that an agent can restore full context when a user returns after days of inactivity"
+version: "1.0"
+memory_types_tested: [semantic, episodic]
+dimensions_tested: [recall_accuracy, relevance]
+
+setup:
+  # Day 1: Initial conversation
+  - write:
+      key: "day1_task"
+      content: "User is building a mobile app for their restaurant chain"
+      memory_type: semantic
+      metadata:
+        tags: ["project"]
+
+  - write:
+      key: "day1_stack"
+      content: "Tech stack decided: React Native for frontend, Node.js backend, PostgreSQL database"
+      memory_type: semantic
+      metadata:
+        tags: ["project", "technical"]
+
+  - write:
+      key: "day1_blocker"
+      content: "Blocked on payment integration, waiting for Stripe API approval"
+      memory_type: episodic
+      metadata:
+        tags: ["project", "blocker"]
+
+  # Day 3: Brief check-in
+  - write:
+      key: "day3_update"
+      content: "Stripe API approved, payment integration can begin"
+      memory_type: episodic
+      metadata:
+        tags: ["project", "update"]
+
+  - write:
+      key: "day3_hire"
+      content: "User hired a freelance designer named Priya for the UI"
+      memory_type: semantic
+      metadata:
+        tags: ["project", "team"]
+
+  # Day 7: User returns after a gap
+  - write:
+      key: "day7_question"
+      content: "User asks for a project status summary after being away for 4 days"
+      memory_type: episodic
+
+steps:
+  # Agent should recall all prior context
+  - assert_search:
+      query: "What is the user building?"
+      expected_contains: ["restaurant"]
+      min_results: 1
+
+  - assert_search:
+      query: "What tech stack are we using?"
+      expected_contains: ["React Native"]
+      min_results: 1
+
+  - assert_search:
+      query: "Were there any blockers?"
+      expected_contains: ["Stripe"]
+      min_results: 1
+
+  - assert_search:
+      query: "Who is on the team?"
+      expected_contains: ["Priya"]
+      min_results: 1
+
+  - assert_search:
+      query: "Has the Stripe blocker been resolved?"
+      expected_contains: ["approved"]
+      min_results: 1
+
+thresholds:
+  recall_accuracy: 0.8
+  relevance: 0.6

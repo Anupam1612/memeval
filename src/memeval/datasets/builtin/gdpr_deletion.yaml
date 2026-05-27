@@ -1,0 +1,86 @@
+name: "GDPR Right to Erasure"
+description: "Tests that user PII is fully removed on deletion while non-PII summaries can be retained"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [forgetting_quality, privacy_isolation, recall_accuracy]
+
+setup:
+  - write:
+      key: "pii_name"
+      content: "User's full name is Maria Elena Rodriguez"
+      memory_type: semantic
+      metadata:
+        tags: ["pii", "identity"]
+
+  - write:
+      key: "pii_email"
+      content: "User's email is maria.rodriguez@email.com"
+      memory_type: semantic
+      metadata:
+        tags: ["pii", "contact"]
+
+  - write:
+      key: "pii_phone"
+      content: "User's phone number is +1-555-867-5309"
+      memory_type: semantic
+      metadata:
+        tags: ["pii", "contact"]
+
+  - write:
+      key: "pii_address"
+      content: "User lives at 742 Evergreen Terrace, Springfield"
+      memory_type: semantic
+      metadata:
+        tags: ["pii", "location"]
+
+  - write:
+      key: "non_pii_preference"
+      content: "User prefers email communication over phone calls"
+      memory_type: semantic
+      metadata:
+        tags: ["preference"]
+
+  - write:
+      key: "non_pii_product"
+      content: "User is on the enterprise pricing plan"
+      memory_type: semantic
+      metadata:
+        tags: ["account"]
+
+steps:
+  - delete:
+      key: "pii_name"
+
+  - delete:
+      key: "pii_email"
+
+  - delete:
+      key: "pii_phone"
+
+  - delete:
+      key: "pii_address"
+
+  # PII should be completely gone
+  - assert_search:
+      query: "What is Maria's email?"
+      expected_not_contains: ["maria.rodriguez", "555-867"]
+
+  - assert_search:
+      query: "Where does the user live?"
+      expected_not_contains: ["Evergreen", "Springfield"]
+
+  # Non-PII should still be accessible
+  - assert_search:
+      query: "How does the user prefer to be contacted?"
+      expected_contains: ["email"]
+      min_results: 1
+
+  - assert_search:
+      query: "What pricing plan is the user on?"
+      expected_contains: ["enterprise"]
+      min_results: 1
+
+thresholds:
+  forgetting_quality: 0.9
+  privacy_isolation: 1.0
+  recall_accuracy: 0.8

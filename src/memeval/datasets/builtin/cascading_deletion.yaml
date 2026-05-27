@@ -1,0 +1,85 @@
+name: "Cascading Deletion"
+description: "Tests that deleting a parent entity properly removes all related child facts"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [forgetting_quality, recall_accuracy]
+
+setup:
+  # Parent: a project
+  - write:
+      key: "project_main"
+      content: "Project Alpha is a web application for inventory management"
+      memory_type: semantic
+      metadata:
+        tags: ["project_alpha"]
+
+  # Child facts related to the project
+  - write:
+      key: "project_deadline"
+      content: "Project Alpha deadline is September 30th"
+      memory_type: semantic
+      metadata:
+        tags: ["project_alpha", "schedule"]
+
+  - write:
+      key: "project_budget"
+      content: "Project Alpha has a budget of $150,000"
+      memory_type: semantic
+      metadata:
+        tags: ["project_alpha", "finance"]
+
+  - write:
+      key: "project_lead"
+      content: "Project Alpha is led by Sarah Chen"
+      memory_type: semantic
+      metadata:
+        tags: ["project_alpha", "team"]
+
+  # Unrelated project that should survive
+  - write:
+      key: "project_beta"
+      content: "Project Beta is a mobile app for customer feedback, led by Mike Torres"
+      memory_type: semantic
+      metadata:
+        tags: ["project_beta"]
+
+  - write:
+      key: "beta_deadline"
+      content: "Project Beta deadline is December 15th"
+      memory_type: semantic
+      metadata:
+        tags: ["project_beta", "schedule"]
+
+steps:
+  # Delete all Project Alpha data
+  - delete:
+      key: "project_main"
+
+  - delete:
+      key: "project_deadline"
+
+  - delete:
+      key: "project_budget"
+
+  - delete:
+      key: "project_lead"
+
+  # Project Alpha should be gone
+  - assert_search:
+      query: "What is Project Alpha?"
+      expected_not_contains: ["inventory", "September", "150,000", "Sarah"]
+
+  # Project Beta should be intact
+  - assert_search:
+      query: "What is Project Beta?"
+      expected_contains: ["feedback"]
+      min_results: 1
+
+  - assert_search:
+      query: "When is Project Beta due?"
+      expected_contains: ["December"]
+      min_results: 1
+
+thresholds:
+  forgetting_quality: 0.9
+  recall_accuracy: 0.8
