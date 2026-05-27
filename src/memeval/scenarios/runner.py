@@ -124,6 +124,12 @@ class ScenarioRunner:
             return await self._exec_delete(step_params, adapter, step_index, start)
         elif step_type == StepType.CONSOLIDATE:
             return await self._exec_consolidate(step_params, adapter, step_index, start)
+        elif step_type == StepType.CREATE_SESSION:
+            return await self._exec_create_session(step_params, adapter, step_index, start)
+        elif step_type == StepType.ADD_MESSAGE:
+            return await self._exec_add_message(step_params, adapter, step_index, start)
+        elif step_type == StepType.ASSERT_CONTEXT:
+            return await self._exec_assert_context(step_params, adapter, step_index, start)
         elif step_type == StepType.ASSERT_READ:
             return await self._exec_assert_read(step_params, adapter, step_index, start)
         elif step_type == StepType.ASSERT_SEARCH:
@@ -256,6 +262,99 @@ class ScenarioRunner:
             success=result.success,
             latency_ms=elapsed,
             data={"key": result.key, "source_keys": params["source_keys"]},
+        )
+
+    async def _exec_create_session(
+        self, params: dict, adapter: MemoryProtocol, idx: int, start: float
+    ) -> StepResult:
+        session_id = await adapter.create_session(
+            session_id=params.get("session_id"),
+            user_id=params.get("user_id"),
+        )
+        elapsed = (time.perf_counter() - start) * 1000
+        # Store session_id in runner state so subsequent steps can reference it
+        self._current_session_id = session_id
+        return StepResult(
+            step_type=StepType.CREATE_SESSION,
+            step_index=idx,
+            success=True,
+            latency_ms=elapsed,
+            data={"session_id": session_id},
+        )
+
+    async def _exec_add_message(
+        self, params: dict, adapter: MemoryProtocol, idx: int, start: float
+    ) -> StepResult:
+        from memeval.protocol.types import Message
+
+        session_id = str(
+            params.get("session_id") or getattr(self, "_current_session_id", "default")
+        )
+        message = Message(
+            role=params.get("role", "user"),
+            content=params["content"],
+        )
+        result = await adapter.add_message(session_id, message)
+        elapsed = (time.perf_counter() - start) * 1000
+        return StepResult(
+            step_type=StepType.ADD_MESSAGE,
+            step_index=idx,
+            success=result.success,
+            latency_ms=elapsed,
+            data={"session_id": session_id, "role": message.role, "content": message.content},
+        )
+
+    async def _exec_assert_context(
+        self, params: dict, adapter: MemoryProtocol, idx: int, start: float
+    ) -> StepResult:
+        session_id = str(
+            params.get("session_id") or getattr(self, "_current_session_id", "default")
+        )
+        context = await adapter.get_session_context(
+            session_id, query=params.get("query")
+        )
+        elapsed = (time.perf_counter() - start) * 1000
+
+        all_facts = " ".join(context.facts).lower()
+        assertion_details: dict[str, Any] = {}
+        passed = True
+
+        if "expected_contains" in params:
+            expected = params["expected_contains"]
+            if isinstance(expected, str):
+                expected = [expected]
+            assertion_details["expected_contains"] = expected
+            for exp in expected:
+                if exp.lower() not in all_facts:
+                    passed = False
+
+        if "expected_not_contains" in params:
+            not_expected = params["expected_not_contains"]
+            if isinstance(not_expected, str):
+                not_expected = [not_expected]
+            assertion_details["expected_not_contains"] = not_expected
+            for exp in not_expected:
+                if exp.lower() in all_facts:
+                    passed = False
+
+        if "min_facts" in params:
+            assertion_details["min_facts"] = params["min_facts"]
+            if len(context.facts) < params["min_facts"]:
+                passed = False
+
+        return StepResult(
+            step_type=StepType.ASSERT_CONTEXT,
+            step_index=idx,
+            success=True,
+            latency_ms=elapsed,
+            assertion_passed=passed,
+            assertion_details=assertion_details,
+            data={
+                "session_id": session_id,
+                "facts": context.facts,
+                "facts_count": len(context.facts),
+                "summary": context.summary,
+            },
         )
 
     async def _exec_assert_read(

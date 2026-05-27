@@ -82,6 +82,25 @@ class WriteResult:
 
 
 @dataclass(frozen=True)
+class Message:
+    """A single message in a conversation turn."""
+
+    role: str  # "user", "assistant", "system"
+    content: str
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class SessionContext:
+    """Context returned from a session -- what the memory system knows."""
+
+    session_id: str
+    facts: list[str] = field(default_factory=list)
+    summary: str | None = None
+    raw: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class SearchFilters:
     """Filters applied to search and list operations."""
 
