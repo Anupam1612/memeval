@@ -1,0 +1,79 @@
+name: "Soft Contradictions"
+description: "Tests handling of facts that seem contradictory but are both valid in different contexts"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [recall_accuracy, consistency, relevance]
+
+setup:
+  # These are NOT contradictions -- both can be true
+  - write:
+      key: "food_italian"
+      content: "User loves Italian food, especially pasta"
+      memory_type: semantic
+      metadata:
+        tags: ["preference", "food"]
+
+  - write:
+      key: "food_japanese"
+      content: "User also loves Japanese food, especially sushi"
+      memory_type: semantic
+      metadata:
+        tags: ["preference", "food"]
+
+  # Context-dependent facts
+  - write:
+      key: "work_office"
+      content: "User works from the office on Tuesdays and Thursdays"
+      memory_type: semantic
+      metadata:
+        tags: ["schedule", "work"]
+
+  - write:
+      key: "work_remote"
+      content: "User works remotely on Mondays, Wednesdays, and Fridays"
+      memory_type: semantic
+      metadata:
+        tags: ["schedule", "work"]
+
+  # Seasonal preferences
+  - write:
+      key: "drink_summer"
+      content: "In summer, user drinks iced coffee"
+      memory_type: semantic
+      metadata:
+        tags: ["preference", "seasonal"]
+
+  - write:
+      key: "drink_winter"
+      content: "In winter, user drinks hot chocolate"
+      memory_type: semantic
+      metadata:
+        tags: ["preference", "seasonal"]
+
+steps:
+  # Both food preferences should be retrievable
+  - assert_search:
+      query: "What food does the user like?"
+      expected_contains: ["Italian"]
+      min_results: 1
+
+  - assert_search:
+      query: "Does the user like Japanese food?"
+      expected_contains: ["sushi"]
+      min_results: 1
+
+  # Work schedule should return both patterns
+  - assert_search:
+      query: "When does the user work from office?"
+      expected_contains: ["Tuesday"]
+      min_results: 1
+
+  - assert_search:
+      query: "When does the user work remotely?"
+      expected_contains: ["Monday"]
+      min_results: 1
+
+thresholds:
+  recall_accuracy: 0.8
+  consistency: 0.8
+  relevance: 0.5

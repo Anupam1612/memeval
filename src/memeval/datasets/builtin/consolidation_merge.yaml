@@ -1,0 +1,60 @@
+name: "Memory Consolidation"
+description: "Tests the consolidate operation -- merging multiple related memories into one"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [recall_accuracy]
+
+setup:
+  - write:
+      key: "fragment_1"
+      content: "User enjoys hiking on weekends"
+      memory_type: semantic
+      metadata:
+        tags: ["hobby"]
+
+  - write:
+      key: "fragment_2"
+      content: "User also likes rock climbing at the local gym"
+      memory_type: semantic
+      metadata:
+        tags: ["hobby"]
+
+  - write:
+      key: "fragment_3"
+      content: "User recently started trail running"
+      memory_type: semantic
+      metadata:
+        tags: ["hobby"]
+
+  - write:
+      key: "unrelated"
+      content: "User works as an accountant at a mid-size firm"
+      memory_type: semantic
+      metadata:
+        tags: ["career"]
+
+steps:
+  # Consolidate the hobby fragments
+  - consolidate:
+      source_keys: ["fragment_1", "fragment_2", "fragment_3"]
+      strategy: merge
+
+  # Consolidated memory should contain all hobbies
+  - assert_search:
+      query: "What are the user's hobbies?"
+      expected_contains: ["hiking"]
+      min_results: 1
+
+  # Original fragments should be gone
+  - assert_read:
+      key: "fragment_1"
+      expected_not_contains: "hiking"
+
+  # Unrelated memory should be untouched
+  - assert_search:
+      query: "What does the user do for work?"
+      expected_contains: ["accountant"]
+      min_results: 1
+
+thresholds:
+  recall_accuracy: 0.7

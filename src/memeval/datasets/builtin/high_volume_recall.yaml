@@ -1,0 +1,105 @@
+name: "High Volume Recall"
+description: "Tests recall accuracy when many facts are stored -- finding needles in a haystack"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [recall_accuracy, relevance, latency_cost]
+
+setup:
+  # Target facts (needles)
+  - write:
+      key: "needle_1"
+      content: "User's anniversary is on March 14th and they always celebrate with dinner at Chez Pierre"
+      memory_type: semantic
+      metadata:
+        tags: ["personal", "target"]
+
+  - write:
+      key: "needle_2"
+      content: "User's car is a 2023 Tesla Model 3 in midnight blue"
+      memory_type: semantic
+      metadata:
+        tags: ["personal", "target"]
+
+  # Noise facts (hay)
+  - write:
+      key: "noise_01"
+      content: "The quarterly all-hands meeting is scheduled for the first Monday of each quarter"
+      memory_type: semantic
+  - write:
+      key: "noise_02"
+      content: "Office supplies can be ordered through the internal portal"
+      memory_type: semantic
+  - write:
+      key: "noise_03"
+      content: "The company holiday party is in December"
+      memory_type: semantic
+  - write:
+      key: "noise_04"
+      content: "New employees should complete onboarding within the first two weeks"
+      memory_type: semantic
+  - write:
+      key: "noise_05"
+      content: "The cafeteria serves lunch from 11:30 to 1:30 daily"
+      memory_type: semantic
+  - write:
+      key: "noise_06"
+      content: "IT support tickets should be filed through ServiceNow"
+      memory_type: semantic
+  - write:
+      key: "noise_07"
+      content: "The gym on the 4th floor is open from 6am to 10pm"
+      memory_type: semantic
+  - write:
+      key: "noise_08"
+      content: "Business travel must be pre-approved by the department head"
+      memory_type: semantic
+  - write:
+      key: "noise_09"
+      content: "The company uses Google Workspace for email and documents"
+      memory_type: semantic
+  - write:
+      key: "noise_10"
+      content: "Performance reviews are conducted twice a year in March and September"
+      memory_type: semantic
+  - write:
+      key: "noise_11"
+      content: "The parking garage gate code changes monthly"
+      memory_type: semantic
+  - write:
+      key: "noise_12"
+      content: "Team building activities are organized by HR every quarter"
+      memory_type: semantic
+  - write:
+      key: "noise_13"
+      content: "The VPN must be connected for remote access to internal systems"
+      memory_type: semantic
+  - write:
+      key: "noise_14"
+      content: "Expense reports must be submitted within 30 days of the expense"
+      memory_type: semantic
+  - write:
+      key: "noise_15"
+      content: "The conference rooms on floor 5 have video conferencing equipment"
+      memory_type: semantic
+
+steps:
+  # Find the needles in the haystack
+  - assert_search:
+      query: "When is the user's anniversary?"
+      expected_contains: ["March 14"]
+      min_results: 1
+
+  - assert_search:
+      query: "What car does the user drive?"
+      expected_contains: ["Tesla"]
+      min_results: 1
+
+  - assert_search:
+      query: "Where does the user celebrate their anniversary?"
+      expected_contains: ["Chez Pierre"]
+      min_results: 1
+
+thresholds:
+  recall_accuracy: 0.8
+  relevance: 0.6
+  latency_cost: 0.7

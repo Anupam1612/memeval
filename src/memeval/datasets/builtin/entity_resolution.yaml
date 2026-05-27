@@ -1,0 +1,58 @@
+name: "Entity Resolution"
+description: "Tests whether the memory system recognizes different references to the same entity"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [recall_accuracy, relevance, consistency]
+
+setup:
+  - write:
+      key: "person_full"
+      content: "The user's manager is named Jonathan William Smith"
+      memory_type: semantic
+      metadata:
+        tags: ["people"]
+
+  - write:
+      key: "person_short"
+      content: "Jon Smith approved the budget request on Monday"
+      memory_type: semantic
+      metadata:
+        tags: ["people", "events"]
+
+  - write:
+      key: "person_email"
+      content: "j.smith@company.com sent the quarterly report"
+      memory_type: semantic
+      metadata:
+        tags: ["people", "communication"]
+
+  - write:
+      key: "company_full"
+      content: "User is interviewing with Alphabet Incorporated next week"
+      memory_type: semantic
+
+  - write:
+      key: "company_alias"
+      content: "Google offered the user a senior engineer position"
+      memory_type: semantic
+
+steps:
+  - assert_search:
+      query: "What did Jon Smith do?"
+      expected_contains: ["Smith"]
+      min_results: 1
+
+  - assert_search:
+      query: "Who is the user's manager?"
+      expected_contains: ["Smith"]
+      min_results: 1
+
+  - assert_search:
+      query: "Who sent the quarterly report?"
+      expected_contains: ["smith"]
+      min_results: 1
+
+thresholds:
+  recall_accuracy: 0.7
+  relevance: 0.5
+  consistency: 0.8

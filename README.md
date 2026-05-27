@@ -50,7 +50,7 @@ memeval tests **8 dimensions** of memory quality:
 ## Quick Start
 
 ```bash
-pip install memeval
+pip install memoryeval
 ```
 
 ### Run built-in scenarios
@@ -146,10 +146,10 @@ memeval run --adapter mem0 --output report.json
 | Provider | Adapter | Install |
 |----------|---------|---------|
 | In-Memory (testing) | `in_memory` | Built-in |
-| [Mem0](https://mem0.ai) | `mem0` | `pip install memeval[mem0]` |
-| [Zep](https://getzep.com) | `zep` | `pip install memeval[zep]` |
-| [Letta](https://letta.com) | `letta` | `pip install memeval[letta]` |
-| Custom | Implement `MemoryProtocol` | See docs |
+| [Mem0](https://mem0.ai) | `mem0` | `pip install memoryeval[mem0]` |
+| [Zep](https://getzep.com) | `zep` | `pip install memoryeval[zep]` |
+| [Letta](https://letta.com) | `letta` | `pip install memoryeval[letta]` |
+| Custom | Implement `MemoryProtocol` | See [docs](docs/writing-adapters.md) |
 
 ### Writing a custom adapter
 
@@ -207,7 +207,7 @@ src/memeval/
 ├── metrics/        # 8 evaluation dimensions
 ├── scenarios/      # YAML loader + execution engine
 ├── reporting/      # Console scorecard, JSON, comparisons
-├── datasets/       # 10 built-in test scenarios
+├── datasets/       # 24 built-in test scenarios
 ├── cli.py          # memeval run/benchmark/init
 └── plugin.py       # pytest auto-discovery
 ```

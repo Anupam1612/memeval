@@ -1,0 +1,59 @@
+name: "Rapid Sequential Updates"
+description: "Tests that only the latest version of a rapidly updated fact is canonical"
+version: "1.0"
+memory_types_tested: [semantic]
+dimensions_tested: [update_propagation, consistency, recall_accuracy]
+
+setup:
+  - write:
+      key: "status_v1"
+      content: "Project status: planning phase, no work started"
+      memory_type: semantic
+      metadata:
+        tags: ["project", "status"]
+
+steps:
+  - write:
+      key: "status_v2"
+      content: "Project status: requirements gathered, design in progress"
+      memory_type: semantic
+      metadata:
+        tags: ["project", "status"]
+
+  - write:
+      key: "status_v3"
+      content: "Project status: design complete, development started"
+      memory_type: semantic
+      metadata:
+        tags: ["project", "status"]
+
+  - write:
+      key: "status_v4"
+      content: "Project status: development 80% complete, testing begins next week"
+      memory_type: semantic
+      metadata:
+        tags: ["project", "status"]
+
+  - write:
+      key: "status_v5"
+      content: "Project status: development complete, in QA testing"
+      memory_type: semantic
+      metadata:
+        tags: ["project", "status"]
+
+  # Latest status should be found first
+  - assert_search:
+      query: "What is the current project status?"
+      expected_contains: ["QA testing"]
+      min_results: 1
+
+  # Stale statuses should not be the top result
+  - assert_search:
+      query: "Is the project still in planning?"
+      expected_contains: ["QA"]
+      min_results: 1
+
+thresholds:
+  update_propagation: 0.8
+  consistency: 0.7
+  recall_accuracy: 0.7
