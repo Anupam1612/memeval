@@ -240,6 +240,79 @@ thresholds:
     console.print("  3. Or via pytest: pytest memeval_scenarios/ --memeval-adapter=in_memory")
 
 
+@app.command()
+@click.option(
+    "--adapter",
+    default="in_memory",
+    help="Adapter: in_memory, mem0, zep, letta",
+    show_default=True,
+)
+@click.option(
+    "--scenarios",
+    default="builtin",
+    help="Path to scenarios dir, or 'builtin'",
+    show_default=True,
+)
+@click.option(
+    "--failures-only",
+    is_flag=True,
+    help="Only show failed scenarios",
+)
+def diagnose(adapter: str, scenarios: str, failures_only: bool) -> None:
+    """Visualize memory failures with detailed timelines.
+
+    Shows what was stored, what was retrieved, and where things went wrong.
+    """
+    asyncio.run(_run_diagnose(adapter, scenarios, failures_only))
+
+
+async def _run_diagnose(
+    adapter_name: str, scenarios_path: str, failures_only: bool
+) -> None:
+
+    from rich.console import Console
+
+    from memeval.metrics import METRIC_REGISTRY
+    from memeval.scenarios.loader import load_builtin_scenarios, load_scenarios_from_dir
+    from memeval.scenarios.runner import ScenarioRunner
+    from memeval.visualizer import TerminalVisualizer
+
+    console = Console(stderr=True)
+    viz = TerminalVisualizer(console)
+
+    adapter = _create_adapter(adapter_name)
+    console.print(f"[bold]Diagnosing:[/bold] {adapter_name}")
+
+    if scenarios_path == "builtin":
+        scenario_list = load_builtin_scenarios()
+    else:
+        scenario_list = load_scenarios_from_dir(scenarios_path)
+
+    runner = ScenarioRunner()
+    all_results = []
+
+    for scenario in scenario_list:
+        metrics = []
+        for dim in scenario.dimensions_tested:
+            metric_cls = METRIC_REGISTRY.get(dim)
+            if metric_cls:
+                threshold = scenario.thresholds.get(dim, 0.5)
+                metrics.append(metric_cls(threshold=threshold))
+
+        result = await runner.run(scenario, adapter, metrics)
+        all_results.append(result)
+
+    if failures_only:
+        viz.show_failures(all_results)
+    else:
+        viz.show_summary(all_results)
+        viz.show_failures(all_results)
+
+    passed = sum(1 for r in all_results if r.passed)
+    total = len(all_results)
+    console.print(f"[bold]{passed}/{total} scenarios passed[/bold]")
+
+
 def _create_adapter(name: str):  # type: ignore[return]
     """Factory for memory adapters."""
     if name == "in_memory":
