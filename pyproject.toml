@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "memeval"
+name = "memoryeval"
 version = "0.1.0"
 description = "Evaluation framework for agent memory systems"
 readme = "README.md"
@@ -40,7 +40,7 @@ llm-judge-anthropic = ["anthropic>=0.30"]
 llm-judge-openai = ["openai>=1.30"]
 llm-judge = ["anthropic>=0.30", "openai>=1.30"]
 all = [
-    "memeval[mem0,zep,letta,embeddings,nli,llm-judge]",
+    "memoryeval[mem0,zep,letta,embeddings,nli,llm-judge]",
 ]
 dev = [
     "pytest>=8.0",
