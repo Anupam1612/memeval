@@ -1,4 +1,4 @@
-![memeval](assets/logo-light.svg)
+![memeval](https://raw.githubusercontent.com/Anupam1612/memeval/main/assets/logo-light.svg)
 
 **Find out why your AI agent forgot.**
 
