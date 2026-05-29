@@ -1,4 +1,4 @@
-# memeval
+![memeval](assets/logo-light.svg)
 
 **Find out why your AI agent forgot.**
 
