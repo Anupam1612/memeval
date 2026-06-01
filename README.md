@@ -1,5 +1,7 @@
 ![memeval](https://raw.githubusercontent.com/Anupam1612/memeval/main/assets/logo-light.svg)
 
+[![PyPI](https://img.shields.io/pypi/v/memoryeval?color=blue&label=pypi)](https://pypi.org/project/memoryeval/) [![Python](https://img.shields.io/pypi/pyversions/memoryeval)](https://pypi.org/project/memoryeval/) [![License](https://img.shields.io/github/license/Anupam1612/memeval)](https://github.com/Anupam1612/memeval/blob/main/LICENSE) [![CI](https://img.shields.io/github/actions/workflow/status/Anupam1612/memeval/ci.yml?label=CI)](https://github.com/Anupam1612/memeval/actions) [![Downloads](https://img.shields.io/pypi/dm/memoryeval)](https://pypistats.org/packages/memoryeval)
+
 **Find out why your AI agent forgot.**
 
 Your agent told a customer they're vegan -- then recommended a steak restaurant. Your support bot asked for the account ID the customer already gave. Your personal assistant lost the project deadline mentioned three messages ago.
