@@ -47,17 +47,38 @@ def app() -> None:
 )
 @click.option("--output", default=None, help="Output JSON report path")
 @click.option("--verbose", is_flag=True, help="Show detailed per-step results")
-def run(adapter: str, scenarios: str, output: str | None, verbose: bool) -> None:
+@click.option(
+    "--cost", "cost_enabled", is_flag=True,
+    help="Track estimated token cost per operation",
+)
+@click.option(
+    "--model", "llm_model", default="gpt-4o-mini", show_default=True,
+    help="LLM model your memory provider uses (for cost pricing)",
+)
+@click.option(
+    "--budget", "max_cost_usd", type=float, default=None,
+    help="Fail if total scenario cost exceeds this USD amount (per scenario)",
+)
+def run(
+    adapter: str, scenarios: str, output: str | None, verbose: bool,
+    cost_enabled: bool, llm_model: str, max_cost_usd: float | None,
+) -> None:
     """Run memory evaluation scenarios."""
-    asyncio.run(_run_eval(adapter, scenarios, output, verbose))
+    asyncio.run(_run_eval(
+        adapter, scenarios, output, verbose,
+        cost_enabled, llm_model, max_cost_usd,
+    ))
 
 
 async def _run_eval(
-    adapter_name: str, scenarios_path: str, output: str | None, verbose: bool
+    adapter_name: str, scenarios_path: str, output: str | None, verbose: bool,
+    cost_enabled: bool = False, llm_model: str = "gpt-4o-mini",
+    max_cost_usd: float | None = None,
 ) -> None:
     from rich.console import Console
 
-    from memeval.metrics import METRIC_REGISTRY
+    from memeval.metrics import METRIC_REGISTRY, CostMetric
+    from memeval.reporting.console import print_cost_summary
     from memeval.reporting.json_report import generate_report
     from memeval.scenarios.loader import load_builtin_scenarios, load_scenarios_from_dir
     from memeval.scenarios.runner import ScenarioRunner
@@ -92,6 +113,12 @@ async def _run_eval(
                 threshold = scenario.thresholds.get(dim, 0.5)
                 metrics.append(metric_cls(threshold=threshold))
 
+        if cost_enabled:
+            metrics.append(CostMetric(
+                llm_model=llm_model,
+                max_cost_usd=max_cost_usd,
+            ))
+
         result = await runner.run(scenario, adapter, metrics)
         all_results.append(result)
 
@@ -109,6 +136,9 @@ async def _run_eval(
     # Print scorecard
     console.print()
     print_scorecard(all_results, adapter_name, console)
+
+    if cost_enabled:
+        print_cost_summary(all_results, console)
 
     # Output JSON report
     if output:
@@ -130,17 +160,30 @@ async def _run_eval(
 )
 @click.option("--scenarios", default="builtin", show_default=True)
 @click.option("--output", default="benchmark_results.json")
-def benchmark(adapters: tuple[str, ...], scenarios: str, output: str) -> None:
+@click.option(
+    "--cost", "cost_enabled", is_flag=True,
+    help="Track estimated token cost per adapter",
+)
+@click.option(
+    "--model", "llm_model", default="gpt-4o-mini", show_default=True,
+    help="LLM model the memory providers use (for cost pricing)",
+)
+def benchmark(
+    adapters: tuple[str, ...], scenarios: str, output: str,
+    cost_enabled: bool, llm_model: str,
+) -> None:
     """Run comparative benchmark across memory providers."""
-    asyncio.run(_run_benchmark(adapters, scenarios, output))
+    asyncio.run(_run_benchmark(adapters, scenarios, output, cost_enabled, llm_model))
 
 
 async def _run_benchmark(
-    adapter_names: tuple[str, ...], scenarios_path: str, output: str
+    adapter_names: tuple[str, ...], scenarios_path: str, output: str,
+    cost_enabled: bool = False, llm_model: str = "gpt-4o-mini",
 ) -> None:
     from rich.console import Console
 
-    from memeval.metrics import METRIC_REGISTRY
+    from memeval.metrics import METRIC_REGISTRY, CostMetric
+    from memeval.reporting.console import print_cost_summary
     from memeval.reporting.json_report import generate_report
     from memeval.scenarios.loader import load_builtin_scenarios, load_scenarios_from_dir
     from memeval.scenarios.runner import ScenarioRunner
@@ -173,6 +216,9 @@ async def _run_benchmark(
                     threshold = scenario.thresholds.get(dim, 0.5)
                     metrics.append(metric_cls(threshold=threshold))
 
+            if cost_enabled:
+                metrics.append(CostMetric(llm_model=llm_model))
+
             result = await runner.run(scenario, adapter, metrics)
             results.append(result)
 
@@ -180,6 +226,8 @@ async def _run_benchmark(
             console.print(f"  {status} {scenario.name}")
 
         all_adapter_results[adapter_name] = results
+        if cost_enabled:
+            print_cost_summary(results, console)
         console.print()
 
     # Print comparative table

@@ -60,7 +60,7 @@ def generate_report(
             }
         scenarios.append(scenario_entry)
 
-    return {
+    report: dict[str, Any] = {
         "memeval_version": "0.1.0",
         "timestamp": datetime.now().isoformat(),
         "adapter": {"name": adapter_name},
@@ -72,4 +72,49 @@ def generate_report(
         },
         "dimensions": dimensions,
         "scenarios": scenarios,
+    }
+
+    cost_section = _build_cost_section(results)
+    if cost_section:
+        report["cost"] = cost_section
+
+    return report
+
+
+def _build_cost_section(results: list[ScenarioResult]) -> dict[str, Any] | None:
+    """Aggregate cost metric details across scenarios, if present."""
+    total_cost = 0.0
+    projected_monthly = 0.0
+    tokens = {"llm_input_tokens": 0, "llm_output_tokens": 0, "embedding_tokens": 0}
+    per_scenario: list[dict[str, Any]] = []
+    source = None
+    llm_model = None
+
+    for result in results:
+        mr = result.metric_results.get("cost")
+        if mr is None:
+            continue
+        d = mr.details
+        total_cost += d.get("total_cost_usd", 0.0)
+        projected_monthly += d.get("projected_monthly_usd", 0.0)
+        for k in tokens:
+            tokens[k] += d.get("tokens", {}).get(k, 0)
+        source = d.get("source", source)
+        llm_model = d.get("llm_model", llm_model)
+        per_scenario.append({
+            "scenario": result.scenario.name,
+            "cost_usd": d.get("total_cost_usd", 0.0),
+            "cost_per_operation_usd": d.get("cost_per_operation_usd", 0.0),
+        })
+
+    if not per_scenario:
+        return None
+
+    return {
+        "total_cost_usd": round(total_cost, 6),
+        "projected_monthly_usd": round(projected_monthly, 2),
+        "tokens": tokens,
+        "source": source,
+        "llm_model": llm_model,
+        "per_scenario": per_scenario,
     }

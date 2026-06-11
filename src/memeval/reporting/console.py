@@ -145,3 +145,66 @@ def print_comparative(
     console.print()
     console.print(table)
     console.print()
+
+
+def print_cost_summary(
+    results: list[ScenarioResult],
+    console: Console | None = None,
+) -> None:
+    """Print a cost summary table when the cost metric was run."""
+    console = console or Console()
+
+    total_cost = 0.0
+    total_tokens = {"llm_input_tokens": 0, "llm_output_tokens": 0, "embedding_tokens": 0}
+    projected_monthly = 0.0
+    source = "estimated"
+    llm_model = ""
+    profile_note = ""
+    rows: list[tuple[str, float]] = []
+
+    for result in results:
+        mr = result.metric_results.get("cost")
+        if mr is None:
+            continue
+        d = mr.details
+        cost = d.get("total_cost_usd", 0.0)
+        total_cost += cost
+        projected_monthly += d.get("projected_monthly_usd", 0.0)
+        for k in total_tokens:
+            total_tokens[k] += d.get("tokens", {}).get(k, 0)
+        source = d.get("source", source)
+        llm_model = d.get("llm_model", llm_model)
+        profile_note = d.get("profile_note", profile_note)
+        rows.append((result.scenario.name, cost))
+
+    if not rows:
+        return
+
+    table = Table(
+        title="COST SUMMARY",
+        caption=f"Token counts are {source}. LLM model: {llm_model}",
+        show_header=True,
+        header_style="bold cyan",
+    )
+    table.add_column("Scenario", min_width=30)
+    table.add_column("Cost (USD)", justify="right")
+
+    for name, cost in rows:
+        table.add_row(name, f"${cost:.4f}")
+
+    table.add_section()
+    table.add_row("[bold]TOTAL[/bold]", f"[bold]${total_cost:.4f}[/bold]")
+
+    console.print(table)
+    console.print(
+        f"  Tokens: {total_tokens['llm_input_tokens']:,} LLM in / "
+        f"{total_tokens['llm_output_tokens']:,} LLM out / "
+        f"{total_tokens['embedding_tokens']:,} embedding"
+    )
+    console.print(
+        f"  Projected monthly (sum across scenarios at configured ops/day): "
+        f"${projected_monthly:,.2f}"
+    )
+    if profile_note:
+        console.print(f"  Note: {profile_note}")
+    console.print()

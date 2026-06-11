@@ -1,5 +1,6 @@
 from memeval.metrics.base import BaseMetric, MetricCategory, MetricResult
 from memeval.metrics.consistency import ConsistencyMetric
+from memeval.metrics.cost import CostMetric
 from memeval.metrics.forgetting import ForgettingQualityMetric
 from memeval.metrics.latency import LatencyCostMetric
 from memeval.metrics.privacy import PrivacyIsolationMetric
@@ -17,6 +18,7 @@ ALL_METRICS = [
     LatencyCostMetric,
     ScalabilityMetric,
     PrivacyIsolationMetric,
+    CostMetric,
 ]
 
 METRIC_REGISTRY: dict[str, type[BaseMetric]] = {m.name: m for m in ALL_METRICS}  # type: ignore[attr-defined,misc]
@@ -28,6 +30,7 @@ __all__ = [
     "RecallAccuracyMetric",
     "RelevanceMetric",
     "ConsistencyMetric",
+    "CostMetric",
     "ForgettingQualityMetric",
     "UpdatePropagationMetric",
     "LatencyCostMetric",
