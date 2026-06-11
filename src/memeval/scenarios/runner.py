@@ -171,7 +171,12 @@ class ScenarioRunner:
             step_index=idx,
             success=result.success,
             latency_ms=elapsed,
-            data={"key": result.key, "latency_ms": result.latency_ms},
+            data={
+                "key": result.key,
+                "latency_ms": result.latency_ms,
+                "content_chars": len(params["content"]),
+                "tokens_used": result.tokens_used,
+            },
         )
 
     async def _exec_read(
@@ -207,6 +212,7 @@ class ScenarioRunner:
             latency_ms=elapsed,
             data={
                 "query": params["query"],
+                "query_chars": len(params["query"]),
                 "results": [
                     {
                         "content": r.entry.content, "key": r.entry.key,
@@ -232,7 +238,11 @@ class ScenarioRunner:
             step_index=idx,
             success=result.success,
             latency_ms=elapsed,
-            data={"key": params["key"]},
+            data={
+                "key": params["key"],
+                "content_chars": len(params["content"]),
+                "tokens_used": result.tokens_used,
+            },
         )
 
     async def _exec_delete(
@@ -301,7 +311,13 @@ class ScenarioRunner:
             step_index=idx,
             success=result.success,
             latency_ms=elapsed,
-            data={"session_id": session_id, "role": message.role, "content": message.content},
+            data={
+                "session_id": session_id,
+                "role": message.role,
+                "content": message.content,
+                "content_chars": len(message.content),
+                "tokens_used": result.tokens_used,
+            },
         )
 
     async def _exec_assert_context(
@@ -351,6 +367,8 @@ class ScenarioRunner:
             assertion_details=assertion_details,
             data={
                 "session_id": session_id,
+                "query": params.get("query"),
+                "query_chars": len(params.get("query") or ""),
                 "facts": context.facts,
                 "facts_count": len(context.facts),
                 "summary": context.summary,
@@ -458,6 +476,7 @@ class ScenarioRunner:
             assertion_details=assertion_details,
             data={
                 "query": params["query"],
+                "query_chars": len(params["query"]),
                 "results": [
                     {
                         "content": r.entry.content, "key": r.entry.key,
