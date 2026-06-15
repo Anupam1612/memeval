@@ -59,21 +59,26 @@ def app() -> None:
     "--budget", "max_cost_usd", type=float, default=None,
     help="Fail if total scenario cost exceeds this USD amount (per scenario)",
 )
+@click.option(
+    "--html", "html_output", default=None,
+    help="Write a self-contained HTML report to this path",
+)
 def run(
     adapter: str, scenarios: str, output: str | None, verbose: bool,
     cost_enabled: bool, llm_model: str, max_cost_usd: float | None,
+    html_output: str | None,
 ) -> None:
     """Run memory evaluation scenarios."""
     asyncio.run(_run_eval(
         adapter, scenarios, output, verbose,
-        cost_enabled, llm_model, max_cost_usd,
+        cost_enabled, llm_model, max_cost_usd, html_output,
     ))
 
 
 async def _run_eval(
     adapter_name: str, scenarios_path: str, output: str | None, verbose: bool,
     cost_enabled: bool = False, llm_model: str = "gpt-4o-mini",
-    max_cost_usd: float | None = None,
+    max_cost_usd: float | None = None, html_output: str | None = None,
 ) -> None:
     from rich.console import Console
 
@@ -146,6 +151,13 @@ async def _run_eval(
         Path(output).write_text(json.dumps(report, indent=2, default=str))
         console.print(f"\n[bold]Report saved:[/bold] {output}")
 
+    # Output HTML report
+    if html_output:
+        from memeval.reporting.html import render_html_report
+
+        Path(html_output).write_text(render_html_report(all_results, adapter_name))
+        console.print(f"[bold]HTML report saved:[/bold] {html_output}")
+
     # Exit with error if any failed
     if not all(r.passed for r in all_results):
         sys.exit(1)
@@ -168,17 +180,24 @@ async def _run_eval(
     "--model", "llm_model", default="gpt-4o-mini", show_default=True,
     help="LLM model the memory providers use (for cost pricing)",
 )
+@click.option(
+    "--html", "html_output", default=None,
+    help="Write a self-contained HTML report to this path",
+)
 def benchmark(
     adapters: tuple[str, ...], scenarios: str, output: str,
-    cost_enabled: bool, llm_model: str,
+    cost_enabled: bool, llm_model: str, html_output: str | None,
 ) -> None:
     """Run comparative benchmark across memory providers."""
-    asyncio.run(_run_benchmark(adapters, scenarios, output, cost_enabled, llm_model))
+    asyncio.run(_run_benchmark(
+        adapters, scenarios, output, cost_enabled, llm_model, html_output,
+    ))
 
 
 async def _run_benchmark(
     adapter_names: tuple[str, ...], scenarios_path: str, output: str,
     cost_enabled: bool = False, llm_model: str = "gpt-4o-mini",
+    html_output: str | None = None,
 ) -> None:
     from rich.console import Console
 
@@ -240,6 +259,12 @@ async def _run_benchmark(
 
     Path(output).write_text(json.dumps(benchmark_report, indent=2, default=str))
     console.print(f"\n[bold]Benchmark report saved:[/bold] {output}")
+
+    if html_output:
+        from memeval.reporting.html import render_benchmark_html
+
+        Path(html_output).write_text(render_benchmark_html(all_adapter_results))
+        console.print(f"[bold]HTML report saved:[/bold] {html_output}")
 
 
 @app.command()

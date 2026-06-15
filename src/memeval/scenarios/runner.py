@@ -175,6 +175,7 @@ class ScenarioRunner:
                 "key": result.key,
                 "latency_ms": result.latency_ms,
                 "content_chars": len(params["content"]),
+                "content_preview": params["content"][:60],
                 "tokens_used": result.tokens_used,
             },
         )
@@ -241,6 +242,7 @@ class ScenarioRunner:
             data={
                 "key": params["key"],
                 "content_chars": len(params["content"]),
+                "content_preview": params["content"][:60],
                 "tokens_used": result.tokens_used,
             },
         )
