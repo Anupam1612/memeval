@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>memeval report - {{ adapter_label }}</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0A0A0C;
+    --card: #121214;
+    --card-deep: #0E0E10;
+    --border: #232328;
+    --border-strong: #2E2E33;
+    --border-fail: #3A1D21;
+    --bright: #F4F4F2;
+    --label: #C9C9CC;
+    --muted: #9C9C9F;
+    --dim: #5C5C61;
+    --faint: #3A3A3F;
+    --amber: #58A6FF;
+    --pass: #46D39A;
+    --pass-bg: #122B20;
+    --pass-border: #235C42;
+    --fail: #FF5C5C;
+    --fail-bg: #331417;
+    --fail-border: #6B2A31;
+    --track: #1C1C20;
+    --sans: "Geist", "Inter", -apple-system, "Segoe UI", sans-serif;
+    --body: "Inter", -apple-system, "Segoe UI", sans-serif;
+    --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--bright);
+    font-family: var(--body); font-size: 14px; line-height: 1.5;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 48px 48px 64px; }
+  section { margin-top: 36px; }
+
+  /* Header */
+  header { display: flex; justify-content: space-between; align-items: center;
+           flex-wrap: wrap; gap: 14px; }
+  .wm { font-family: var(--sans); font-size: 24px; font-weight: 800;
+        display: flex; align-items: center; gap: 3px; }
+  .wm .box { background: var(--amber); color: var(--bg); padding: 2px 8px 3px; }
+  .pills { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  .pill { display: flex; gap: 6px; align-items: center;
+          background: var(--card); border: 1px solid var(--border);
+          border-radius: 4px; padding: 5px 12px;
+          font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .pill .k { color: var(--dim); }
+  .pill .v-amber { color: var(--amber); font-weight: 700; }
+
+  /* Doc title */
+  .doc-title { margin-top: 36px; }
+  .doc-title h1 { font-family: var(--sans); font-size: 34px; font-weight: 700;
+                  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .doc-title .boxed { background: var(--amber); color: var(--bg);
+                      padding: 2px 10px 4px; }
+  .doc-title .sub { margin-top: 8px; font-size: 14px; color: var(--muted); }
+
+  /* Stat cards */
+  .stats { display: flex; gap: 14px; flex-wrap: wrap; }
+  .stat { flex: 1 1 160px; background: var(--card); border: 1px solid var(--border);
+          padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; }
+  .stat .l { font-family: var(--mono); font-size: 10.5px; letter-spacing: 1px;
+             text-transform: uppercase; color: var(--dim); }
+  .stat .v { font-family: var(--sans); font-size: 28px; font-weight: 700;
+             line-height: 1.15; }
+  .stat .v.amber { color: var(--amber); }
+  .stat .v .unit { font-family: var(--body); font-size: 13px; font-weight: 400;
+                   color: var(--dim); margin-left: 4px; }
+  .stat .s { font-size: 12px; color: var(--dim); }
+  .stat .s.fail { color: var(--fail); }
+
+  /* Section titles */
+  h2 { font-family: var(--sans); font-size: 18px; font-weight: 700;
+       color: var(--bright); margin-bottom: 16px; }
+
+  /* Scorecard bars */
+  .bar-row { display: flex; align-items: center; gap: 12px; }
+  .bar-row + .bar-row { margin-top: 10px; }
+  .bar-label { width: 200px; flex: none; font-family: var(--mono);
+               font-size: 12.5px; color: var(--label);
+               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-track { flex: 1; height: 12px; background: var(--track); position: relative; }
+  .bar-fill { height: 12px; background: var(--bright); }
+  .bar-fill.fail { background: var(--fail); }
+  .bar-tick { position: absolute; top: -3px; width: 2px; height: 18px;
+              background: var(--amber); }
+  .bar-val { width: 52px; flex: none; text-align: right; font-family: var(--mono);
+             font-size: 12.5px; font-weight: 700; color: var(--bright); }
+  .bar-val.fail { color: var(--fail); }
+
+  /* Scenario cards */
+  .sec-head { display: flex; justify-content: space-between; align-items: center;
+              margin-bottom: 16px; }
+  .sec-head h2 { margin-bottom: 0; }
+  .controls { display: flex; gap: 8px; }
+  .controls button { background: var(--card); border: 1px solid var(--border-strong);
+                     color: var(--label); font-family: var(--mono); font-size: 11px;
+                     padding: 5px 12px; cursor: pointer; }
+  .controls button:hover { border-color: var(--dim); }
+
+  details { background: var(--card); border: 1px solid var(--border); }
+  details + details { margin-top: 10px; }
+  details.failed { border-color: var(--border-fail); }
+  summary { cursor: pointer; user-select: none; list-style: none;
+            display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+  summary::-webkit-details-marker { display: none; }
+  .badge { flex: none; font-family: var(--mono); font-size: 10.5px;
+           font-weight: 700; padding: 3px 10px; border: 1px solid; }
+  .badge.pass { color: var(--pass); background: var(--pass-bg);
+                border-color: var(--pass-border); }
+  .badge.fail { color: var(--fail); background: var(--fail-bg);
+                border-color: var(--fail-border); }
+  summary .name { flex: none; font-family: var(--sans); font-size: 14px;
+                  font-weight: 600; color: var(--bright); }
+  summary .desc { flex: 1; font-size: 12.5px; color: var(--dim);
+                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  summary .chev { flex: none; color: var(--dim); transition: transform 0.15s; }
+  details[open] summary .chev { transform: rotate(180deg); }
+
+  .detail-body { background: var(--card-deep); border-top: 1px solid var(--border);
+                 padding: 14px 16px 16px; }
+
+  /* Timeline */
+  .timeline { list-style: none; font-family: var(--mono); font-size: 12.5px; }
+  .timeline li { white-space: pre-wrap; }
+  .timeline li + li { margin-top: 5px; }
+  .timeline li.i1 { padding-left: 26px; }
+  .timeline li.i2 { padding-left: 44px; }
+  .amber { color: var(--amber); }
+  .bright { color: var(--bright); }
+  .dim { color: var(--dim); }
+  .muted { color: var(--muted); }
+  .pass { color: var(--pass); }
+  .fail { color: var(--fail); }
+
+  /* Metric table */
+  table { border-collapse: collapse; width: 100%; font-family: var(--mono);
+          margin-top: 14px; }
+  th { font-size: 11px; font-weight: 400; color: var(--dim); text-align: left;
+       padding: 6px 0; border-bottom: 1px solid var(--border); }
+  td { font-size: 12px; color: var(--label); padding: 6px 0; }
+  td.score, td.status { font-weight: 700; }
+  td.pass, td.fail { font-weight: 700; }
+  td.thr { color: var(--dim); }
+
+  footer { margin-top: 36px; border-top: 1px solid var(--border);
+           padding-top: 16px; font-family: var(--mono); font-size: 11px;
+           display: flex; gap: 6px; }
+  footer a { color: var(--dim); text-decoration: none; }
+  footer a:hover { color: var(--amber); }
+  footer .tag { color: var(--faint); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="wm">mem<span class="box">eval</span></div>
+  <div class="pills">
+    <span class="pill"><span class="k">{{ adapter_key }}</span><span class="v-amber">{{ adapter_label }}</span></span>
+    <span class="pill">{{ timestamp }}</span>
+    <span class="pill">v{{ version }}</span>
+  </div>
+</header>
+
+<div class="doc-title">
+  <h1>Memory <span class="boxed">Evaluation</span> Report</h1>
+  <div class="sub">{{ subtitle }}</div>
+</div>
+
+<section class="stats">
+  <div class="stat">
+    <span class="l">Overall score</span>
+    <span class="v">{{ "%.3f"|format(overall_score) }}</span>
+    <span class="s">mean across {{ dimensions_count }} dimensions</span>
+  </div>
+  <div class="stat">
+    <span class="l">Scenarios</span>
+    <span class="v">{{ scenarios_passed }}/{{ scenarios_total }}<span class="unit">passed</span></span>
+    {% if scenarios_failed > 0 %}
+    <span class="s fail">{{ scenarios_failed }} failed -- expanded below</span>
+    {% else %}
+    <span class="s">all scenarios passed</span>
+    {% endif %}
+  </div>
+  {% if cost %}
+  <div class="stat">
+    <span class="l">Run cost</span>
+    <span class="v amber">${{ "%.4f"|format(cost.total_usd) }}</span>
+    <span class="s">{{ "{:,}".format(cost.total_tokens) }} tokens, {{ cost.source }}</span>
+  </div>
+  <div class="stat">
+    <span class="l">Projected monthly</span>
+    <span class="v amber">${{ "%.2f"|format(cost.projected_monthly_usd) }}</span>
+    <span class="s">at {{ "{:,}".format(cost.ops_per_day) }} ops/day</span>
+  </div>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Scorecard</h2>
+  {% for bar in bars %}
+  <div class="bar-row">
+    <span class="bar-label">{{ bar.label }}</span>
+    <div class="bar-track">
+      <div class="bar-fill{% if not bar.passed %} fail{% endif %}" style="width: {{ bar.pct }}%"></div>
+      {% if bar.tick_pct is not none %}
+      <div class="bar-tick" style="left: {{ bar.tick_pct }}%"></div>
+      {% endif %}
+    </div>
+    <span class="bar-val{% if not bar.passed %} fail{% endif %}">{{ "%.3f"|format(bar.value) }}</span>
+  </div>
+  {% endfor %}
+</section>
+
+{% if comparison %}
+<section>
+  <h2>Provider Comparison</h2>
+  <table>
+    <tr>
+      <th>Dimension</th>
+      {% for name in comparison.adapters %}<th>{{ name }}</th>{% endfor %}
+      <th>Best</th>
+    </tr>
+    {% for row in comparison.rows %}
+    <tr>
+      <td>{{ row.dimension }}</td>
+      {% for v in row.scores %}<td>{{ "%.3f"|format(v) }}</td>{% endfor %}
+      <td class="pass">{{ row.best }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endif %}
+
+<section>
+  <div class="sec-head">
+    <h2>Scenarios</h2>
+    <div class="controls">
+      <button onclick="document.querySelectorAll('details').forEach(d => d.open = true)">Expand all</button>
+      <button onclick="document.querySelectorAll('details').forEach(d => d.open = false)">Collapse all</button>
+    </div>
+  </div>
+
+  {% for sc in scenarios %}
+  <details class="{% if sc.passed %}passed{% else %}failed{% endif %}" {% if not sc.passed %}open{% endif %}>
+    <summary>
+      <span class="badge {% if sc.passed %}pass{% else %}fail{% endif %}">{% if sc.passed %}PASS{% else %}FAIL{% endif %}</span>
+      <span class="name">{{ sc.name }}</span>
+      <span class="desc">{{ sc.description }}</span>
+      <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round"
+           stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </summary>
+    <div class="detail-body">
+
+      <ul class="timeline">
+        {% for line in sc.timeline %}
+        <li{% if line.indent %} class="i{{ line.indent }}"{% endif %}>{% for seg in line.segs %}<span class="{{ seg.css }}">{{ seg.t }}</span>{% endfor %}</li>
+        {% endfor %}
+      </ul>
+
+      {% if sc.metrics %}
+      <table>
+        <tr>
+          <th style="width: 220px">Metric</th>
+          <th style="width: 90px">Score</th>
+          <th style="width: 110px">Threshold</th>
+          <th>Status</th>
+        </tr>
+        {% for m in sc.metrics %}
+        <tr title="{{ m.reason }}">
+          <td>{{ m.name }}</td>
+          <td class="score {% if m.passed %}pass{% else %}fail{% endif %}">{{ "%.3f"|format(m.score) }}</td>
+          <td class="thr">{{ "%.3f"|format(m.threshold) }}</td>
+          <td class="status {% if m.passed %}pass{% else %}fail{% endif %}">{% if m.passed %}PASS{% else %}FAIL{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% endif %}
+
+    </div>
+  </details>
+  {% endfor %}
+</section>
+
+<footer>
+  <a href="https://github.com/Anupam1612/memeval">Generated by memeval</a>
+  <span class="tag">-- find out why your agent forgot.</span>
+</footer>
+
+</div>
+</body>
+</html>
